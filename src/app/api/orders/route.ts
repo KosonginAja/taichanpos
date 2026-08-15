@@ -321,23 +321,36 @@ export async function POST(req: Request) {
       }
 
       if (profitPockets.length > 0) {
+        let totalRounded = 0;
+        let pocketDistributions: Array<{id: number, rounded: number, pct: number}> = [];
+        
         for (const pocket of profitPockets) {
           const pct = parseFloat(pocket.percentage?.toString() || '0');
           if (pct > 0) {
-            let amount = (profitTotal * pct) / 100;
-            if (pocket.id === companyPocket?.id) {
-              amount += roundingAdjustment;
-            }
-            if (amount !== 0) {
-              await tx.insert(pocketTransactions).values({
-                pocketId: pocket.id,
-                direction: 'credit',
-                amount: amount.toString(),
-                sourceType: 'order',
-                sourceRefId: orderNumber,
-                note: `Profit Share dari Pesanan ${orderNumber} (${pct}%)`,
-              });
-            }
+            let exact = (profitTotal * pct) / 100;
+            let rounded = Math.round(exact / 100) * 100;
+            totalRounded += rounded;
+            pocketDistributions.push({ id: pocket.id, rounded, pct });
+          }
+        }
+
+        const expectedTotal = profitTotal + roundingAdjustment;
+        const diff = expectedTotal - totalRounded;
+
+        for (const p of pocketDistributions) {
+          let finalAmount = p.rounded;
+          if (p.id === companyPocket?.id) {
+            finalAmount += diff;
+          }
+          if (finalAmount !== 0) {
+            await tx.insert(pocketTransactions).values({
+              pocketId: p.id,
+              direction: finalAmount >= 0 ? 'credit' : 'debit',
+              amount: Math.abs(finalAmount).toString(),
+              sourceType: 'order',
+              sourceRefId: orderNumber,
+              note: `Profit Share dari Pesanan ${orderNumber} (${p.pct}%)`,
+            });
           }
         }
       }

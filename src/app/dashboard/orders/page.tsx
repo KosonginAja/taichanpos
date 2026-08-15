@@ -950,7 +950,7 @@ export default function OrdersPage() {
               </button>
               <button
                 onClick={handleTriggerPrint}
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-650 hover:bg-orange-600 text-white rounded-xl font-semibold shadow-lg text-sm transition-all"
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold shadow-lg text-sm transition-all"
               >
                 <Printer className="w-4 h-4" /> Cetak Struk
               </button>

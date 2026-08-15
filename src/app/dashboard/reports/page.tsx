@@ -200,7 +200,7 @@ export default function ReportsPage() {
         <AlertTriangle className="w-12 h-12 text-rose-500" />
         <p className="font-semibold text-lg text-slate-800">Akses Ditolak</p>
         <p className="text-sm max-w-sm text-center">
-          Halaman Laporan Laba Rugi dan Ekspor data spreadsheet hanya dapat diakses oleh Admin.
+          Halaman Laporan Laba Rugi dan Ekspor data PDF hanya dapat diakses oleh Admin.
         </p>
       </div>
     );
@@ -278,7 +278,7 @@ export default function ReportsPage() {
               <button
                 onClick={() => handleExport("summary")}
                 disabled={loading}
-                className="mt-6 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-650 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                className="mt-6 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Unduh Rekap Harian
@@ -296,7 +296,7 @@ export default function ReportsPage() {
               <button
                 onClick={() => handleExport("orders")}
                 disabled={loading}
-                className="mt-6 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-650 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                className="mt-6 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Unduh List Pesanan
@@ -314,7 +314,7 @@ export default function ReportsPage() {
               <button
                 onClick={() => handleExport("items")}
                 disabled={loading}
-                className="mt-6 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-650 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                className="mt-6 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Unduh Detail Item

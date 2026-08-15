@@ -34,6 +34,8 @@ export async function GET(req: Request) {
         discount: orders.discount,
         hppTotal: orders.hppTotal,
         revenueTotal: orders.revenueTotal,
+        grandTotal: orders.grandTotal,
+        roundingAdjustment: orders.roundingAdjustment,
         profitTotal: orders.profitTotal,
         paymentMethod: orders.paymentMethod,
         customerName: orders.customerName,
@@ -89,9 +91,9 @@ export async function GET(req: Request) {
         };
       }
       dailyMap[dateStr].ordersCount += 1;
-      dailyMap[dateStr].revenue += parseFloat(o.revenueTotal.toString());
+      dailyMap[dateStr].revenue += parseFloat(o.grandTotal?.toString() || o.revenueTotal.toString());
       dailyMap[dateStr].hpp += parseFloat(o.hppTotal.toString());
-      dailyMap[dateStr].profit += parseFloat(o.profitTotal.toString());
+      dailyMap[dateStr].profit += parseFloat(o.grandTotal?.toString() || o.revenueTotal.toString()) - parseFloat(o.hppTotal.toString());
     }
 
     const dailySummary = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
@@ -106,9 +108,9 @@ export async function GET(req: Request) {
       status: o.status,
       subtotal: parseFloat(o.subtotal.toString()),
       discount: parseFloat(o.discount.toString()),
-      revenueTotal: parseFloat(o.revenueTotal.toString()),
+      revenueTotal: parseFloat(o.grandTotal?.toString() || o.revenueTotal.toString()),
       hppTotal: parseFloat(o.hppTotal.toString()),
-      profitTotal: parseFloat(o.profitTotal.toString()),
+      profitTotal: parseFloat(o.grandTotal?.toString() || o.revenueTotal.toString()) - parseFloat(o.hppTotal.toString()),
     }));
 
     const itemsList = itemsData.map((i) => ({

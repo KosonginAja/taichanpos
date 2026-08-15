@@ -37,10 +37,50 @@ export async function DELETE(req: Request) {
     // 2. Delete Stock Movements
     const deletedStocks = await db.delete(stockMovements).where(lt(stockMovements.createdAt, cutoffDate)).returning({ id: stockMovements.id });
     
-    // 3. Delete Cash Transactions
+    // 3. Handle Cash Transactions Carry-Forward
+    const oldCash = await db.select().from(cashTransactions).where(lt(cashTransactions.date, cutoffDate));
+    let netCash = 0;
+    oldCash.forEach(tx => {
+      const amt = parseFloat(tx.amount.toString());
+      if (tx.type === "in") netCash += amt;
+      else netCash -= amt;
+    });
+
+    if (netCash !== 0) {
+      await db.insert(cashTransactions).values({
+        type: netCash >= 0 ? "in" : "out",
+        category: "Penyesuaian Saldo",
+        isOperational: false,
+        description: `Saldo pindahan sebelum ${cutoffDateStr} (Pembersihan Data)`,
+        amount: Math.abs(netCash).toString(),
+        date: cutoffDate,
+        createdBy: session.id,
+      });
+    }
     const deletedCash = await db.delete(cashTransactions).where(lt(cashTransactions.date, cutoffDate)).returning({ id: cashTransactions.id });
     
-    // 4. Delete Pocket Transactions
+    // 4. Handle Pocket Transactions Carry-Forward
+    const oldPockets = await db.select().from(pocketTransactions).where(lt(pocketTransactions.createdAt, cutoffDate));
+    const pocketBalances: Record<number, number> = {};
+    oldPockets.forEach(tx => {
+      const amt = parseFloat(tx.amount.toString());
+      if (!pocketBalances[tx.pocketId]) pocketBalances[tx.pocketId] = 0;
+      if (tx.direction === "credit") pocketBalances[tx.pocketId] += amt;
+      else pocketBalances[tx.pocketId] -= amt;
+    });
+
+    for (const [pocketIdStr, net] of Object.entries(pocketBalances)) {
+      if (net !== 0) {
+        await db.insert(pocketTransactions).values({
+          pocketId: parseInt(pocketIdStr),
+          direction: net >= 0 ? "credit" : "debit",
+          amount: Math.abs(net).toString(),
+          sourceType: "manual",
+          note: `Saldo pindahan sebelum ${cutoffDateStr}`,
+          createdAt: cutoffDate,
+        });
+      }
+    }
     const deletedPocketTx = await db.delete(pocketTransactions).where(lt(pocketTransactions.createdAt, cutoffDate)).returning({ id: pocketTransactions.id });
     
     // 5. Delete Profit Allocations (will cascade delete items)

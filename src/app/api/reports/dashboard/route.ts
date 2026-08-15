@@ -28,8 +28,8 @@ export async function GET() {
       );
 
     const totalOrdersToday = todayOrders.length;
-    const revenueToday = todayOrders.reduce((sum, o) => sum + parseFloat(o.revenueTotal.toString()), 0);
-    const profitToday = todayOrders.reduce((sum, o) => sum + parseFloat(o.profitTotal.toString()), 0);
+    const revenueToday = todayOrders.reduce((sum, o) => sum + parseFloat(o.grandTotal.toString()), 0);
+    const profitToday = todayOrders.reduce((sum, o) => sum + (parseFloat(o.grandTotal.toString()) - parseFloat(o.hppTotal.toString())), 0);
 
     // 2. Fetch low stock count
     const allActiveIngredients = await db
@@ -63,8 +63,8 @@ export async function GET() {
       ...o,
       subtotal: parseFloat(o.subtotal.toString()),
       discount: parseFloat(o.discount.toString()),
-      revenueTotal: parseFloat(o.revenueTotal.toString()),
-      profitTotal: parseFloat(o.profitTotal.toString()),
+      revenueTotal: parseFloat(o.grandTotal.toString()),
+      profitTotal: (parseFloat(o.grandTotal.toString()) - parseFloat(o.hppTotal.toString())),
     }));
 
     // 4. Daily chart data (last 30 days)
@@ -92,8 +92,8 @@ export async function GET() {
       if (!orderMap[dateStr]) {
         orderMap[dateStr] = { revenue: 0, profit: 0 };
       }
-      orderMap[dateStr].revenue += parseFloat(o.revenueTotal.toString());
-      orderMap[dateStr].profit += parseFloat(o.profitTotal.toString());
+      orderMap[dateStr].revenue += parseFloat(o.grandTotal.toString());
+      orderMap[dateStr].profit += (parseFloat(o.grandTotal.toString()) - parseFloat(o.hppTotal.toString()));
     }
 
     for (let i = 0; i < chartDays; i++) {
