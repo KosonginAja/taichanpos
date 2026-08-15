@@ -339,7 +339,7 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="p-3.5 bg-indigo-950/20 border border-indigo-900 rounded-xl text-indigo-300 text-xs leading-relaxed">
+          <div className="p-3.5 bg-indigo-950/10 border border-indigo-900 rounded-xl text-slate-800 text-xs leading-relaxed">
             Data akan diekspor dalam format PDF.
           </div>
         </div>
