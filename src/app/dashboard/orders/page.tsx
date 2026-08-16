@@ -74,41 +74,19 @@ export default function OrdersPage() {
       return;
     }
 
-    const required: { [ingId: number]: { qty: number; name: string; unit: string } } = {};
-    
-    // Sum required ingredients
+    // Check product current stock
+    const warnings: string[] = [];
+    let isShort = false;
+
     for (const item of cart) {
       const prod = products.find((p: any) => p.id === item.productId);
       if (!prod) continue;
       
-      const yieldQty = parseFloat(prod.yieldQty);
-      for (const recipe of prod.recipes) {
-        const reqQty = yieldQty > 0 ? (item.qty * recipe.qty) / yieldQty : 0;
-        if (!required[recipe.ingredientId]) {
-          required[recipe.ingredientId] = {
-            qty: 0,
-            name: recipe.name,
-            unit: recipe.unit,
-          };
-        }
-        required[recipe.ingredientId].qty += reqQty;
-      }
-    }
-
-    // Compare with current ingredients stock
-    const warnings: string[] = [];
-    let isShort = false;
-
-    for (const ingIdStr of Object.keys(required)) {
-      const ingId = parseInt(ingIdStr);
-      const req = required[ingId];
-      const ing = ingredients.find((i: any) => i.id === ingId);
-      
-      const currentStock = ing ? parseFloat(ing.stock) : 0;
-      if (currentStock < req.qty) {
+      const currentStock = parseFloat(prod.currentStock?.toString() || "0");
+      if (currentStock < item.qty) {
         isShort = true;
-        const shortage = req.qty - currentStock;
-        warnings.push(`Stok kurang untuk ${req.name}: butuh ${req.qty.toFixed(2)} ${req.unit}, hanya tersedia ${currentStock.toFixed(2)} ${req.unit} (kurang ${shortage.toFixed(2)}).`);
+        const shortage = item.qty - currentStock;
+        warnings.push(`Stok kurang untuk ${prod.name}: butuh ${item.qty}, tersedia ${currentStock.toFixed(2)} (kurang ${shortage.toFixed(2)}).`);
       }
     }
 
@@ -725,7 +703,7 @@ export default function OrdersPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-600">
-                <thead className="text-xs uppercase tracking-wider text-slate-500 bg-slate-50/40">
+                <thead className="text-xs uppercase tracking-wider text-slate-500 bg-slate-100">
                   <tr>
                     <th className="px-6 py-4 rounded-l-xl">No. Struk</th>
                     <th className="px-6 py-4">Tanggal</th>
@@ -738,9 +716,9 @@ export default function OrdersPage() {
                     <th className="px-6 py-4 text-right rounded-r-xl">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100">
                   {filteredHistory.map((order: any) => (
-                    <tr key={order.id} className="hover:bg-slate-50/20 transition-all">
+                    <tr key={order.id} className="hover:bg-orange-50/50 transition-all">
                       <td className="px-6 py-4.5">
                         <div className="font-semibold text-slate-800">{order.orderNumber}</div>
                         <div className="text-[10px] text-slate-500 mt-1 max-w-[200px] truncate">
@@ -759,32 +737,32 @@ export default function OrdersPage() {
                       <td className="px-6 py-4.5">{order.customerName || "-"}</td>
                       <td className="px-6 py-4.5 font-medium text-slate-800">{formatRupiah(order.revenueTotal)}</td>
                       <td className="px-6 py-4.5 text-xs text-slate-500">{formatRupiah(order.hppTotal)}</td>
-                      <td className="px-6 py-4.5 font-semibold text-emerald-400">{formatRupiah(order.profitTotal)}</td>
+                      <td className="px-6 py-4.5 font-semibold text-emerald-600">{formatRupiah(order.profitTotal)}</td>
                       <td className="px-6 py-4.5 uppercase text-xs">{order.paymentMethod}</td>
                       <td className="px-6 py-4.5">
                         <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           order.status === "paid"
-                            ? "bg-emerald-950 border border-emerald-900 text-emerald-400"
-                            : "bg-red-950 border border-red-900 text-red-400"
+                            ? "bg-emerald-100 border border-emerald-200 text-emerald-700"
+                            : "bg-red-100 border border-red-200 text-red-700"
                         }`}>
                           {order.status === "paid" ? "Paid" : "Cancelled"}
                         </span>
                       </td>
-                      <td className="px-6 py-4.5 text-right space-x-1.5">
+                      <td className="px-6 py-4.5 text-right space-x-1.5 flex justify-end gap-2">
                         <button
                           onClick={() => handleReprint(order)}
-                          className="p-1.5 bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 rounded-lg transition-all inline-flex items-center"
+                          className="px-2 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all inline-flex items-center gap-1.5 text-xs font-medium shadow-sm"
                           title="Cetak Struk"
                         >
-                          <Printer className="w-3.5 h-3.5" />
+                          <Printer className="w-3.5 h-3.5" /> Cetak
                         </button>
                         {order.status === "paid" && (
                           <button
                             onClick={() => handleCancelOrder(order.id, order.orderNumber)}
-                            className="p-1.5 bg-slate-50 border border-slate-200 text-rose-400 hover:bg-rose-950/30 hover:border-rose-900 rounded-lg transition-all inline-flex items-center"
+                            className="px-2 py-1.5 bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-lg transition-all inline-flex items-center gap-1.5 text-xs font-medium shadow-sm"
                             title="Batalkan & Kembalikan Stok"
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-3.5 h-3.5" /> Batal
                           </button>
                         )}
                       </td>

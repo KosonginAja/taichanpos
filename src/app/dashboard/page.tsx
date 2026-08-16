@@ -65,7 +65,7 @@ export default function DashboardPage() {
     );
   }
 
-  const { summary, lowStockIngredients, recentOrders, chartData } = data;
+  const { summary, lowStockIngredients, lowStockProducts, recentOrders, chartData } = data;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -86,7 +86,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* Omzet Card */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-bl-full transition-all group-hover:scale-110" />
@@ -132,11 +132,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Low Stock Warning Card */}
+        {/* Low Stock Gudang Warning Card */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-bl-full transition-all group-hover:scale-110" />
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-500">Stok Kritis</span>
+            <span className="text-sm font-medium text-slate-500">Bahan Baku Kritis</span>
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
               summary.lowStockCount > 0
                 ? "bg-rose-950/60 border-rose-900/60 text-rose-400"
@@ -148,7 +148,28 @@ export default function DashboardPage() {
           <div className="mt-4">
             <h3 className="text-2xl font-bold text-slate-900">{summary.lowStockCount}</h3>
             <p className={`text-xs mt-1 font-medium ${summary.lowStockCount > 0 ? "text-rose-400" : "text-slate-500"}`}>
-              {summary.lowStockCount > 0 ? "Butuh tindakan segera" : "Stok gudang aman"}
+              {summary.lowStockCount > 0 ? "Bahan perlu diisi ulang" : "Gudang bahan aman"}
+            </p>
+          </div>
+        </div>
+
+        {/* Low Stock Produk Warning Card */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-bl-full transition-all group-hover:scale-110" />
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-500">Stok Produk Kritis</span>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+              (summary.lowStockProductCount || 0) > 0
+                ? "bg-amber-950/60 border-amber-900/60 text-amber-400"
+                : "bg-slate-50/60 border-slate-200 text-slate-500"
+            }`}>
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-2xl font-bold text-slate-900">{summary.lowStockProductCount || 0}</h3>
+            <p className={`text-xs mt-1 font-medium ${(summary.lowStockProductCount || 0) > 0 ? "text-amber-400" : "text-slate-500"}`}>
+              {(summary.lowStockProductCount || 0) > 0 ? "Perlu segera diproduksi" : "Stok produk cukup"}
             </p>
           </div>
         </div>

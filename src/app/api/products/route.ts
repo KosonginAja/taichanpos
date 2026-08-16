@@ -64,6 +64,8 @@ export async function GET() {
         name: prod.name,
         sellPrice: sellPriceVal,
         yieldQty: yieldQtyVal,
+        currentStock: parseFloat(prod.currentStock?.toString() || "0"),
+        minStock: parseFloat(prod.minStock?.toString() || "0"),
         isActive: prod.isActive,
         createdAt: prod.createdAt,
         updatedAt: prod.updatedAt,
@@ -89,7 +91,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
     }
 
-    const { name, sellPrice, yieldQty, recipes } = await req.json();
+    const { name, sellPrice, yieldQty, isActive, minStock, recipes } = await req.json();
 
     if (!name || sellPrice === undefined || yieldQty === undefined || !recipes || !Array.isArray(recipes)) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });

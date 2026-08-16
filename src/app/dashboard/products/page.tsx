@@ -13,7 +13,11 @@ import {
   Percent,
   TrendingUp,
   X,
+  PackagePlus,
+  History,
 } from "lucide-react";
+import ProduksiModal from "./ProduksiModal";
+import Link from "next/link";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -33,11 +37,13 @@ export default function ProductsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedProd, setSelectedProd] = useState<any>(null);
+  const [produksiProd, setProduksiProd] = useState<any>(null);
 
   // Form states
   const [name, setName] = useState("");
   const [sellPrice, setSellPrice] = useState("");
   const [yieldQty, setYieldQty] = useState("1");
+  const [minStock, setMinStock] = useState("0");
   const [recipeRows, setRecipeRows] = useState<RecipeRow[]>([
     { ingredientId: 0, qty: "" },
   ]);
@@ -56,6 +62,7 @@ export default function ProductsPage() {
     setName("");
     setSellPrice("");
     setYieldQty("1");
+    setMinStock("0");
     setRecipeRows([{ ingredientId: 0, qty: "" }]);
     setErrorMsg("");
     setSuccessMsg("");
@@ -68,6 +75,7 @@ export default function ProductsPage() {
     setName(prod.name);
     setSellPrice(prod.sellPrice.toString());
     setYieldQty(prod.yieldQty.toString());
+    setMinStock(prod.minStock ? prod.minStock.toString() : "0");
     
     // Populate recipes
     const rows = prod.recipes.map((r: any) => ({
@@ -145,6 +153,7 @@ export default function ProductsPage() {
       name,
       sellPrice: parseFloat(sellPrice),
       yieldQty: parseFloat(yieldQty),
+      minStock: parseFloat(minStock),
       recipes: cleanRecipes.map((r) => ({
         ingredientId: r.ingredientId,
         qty: parseFloat(r.qty),
@@ -197,6 +206,7 @@ export default function ProductsPage() {
     setName("");
     setSellPrice("");
     setYieldQty("1");
+    setMinStock("0");
     setRecipeRows([{ ingredientId: 0, qty: "" }]);
     setErrorMsg("");
     setSuccessMsg("");
@@ -238,7 +248,7 @@ export default function ProductsPage() {
               <thead className="text-xs uppercase tracking-wider text-slate-500 bg-slate-50/40">
                 <tr>
                   <th className="px-6 py-4 rounded-l-xl">Nama Produk</th>
-                  <th className="px-6 py-4">Porsi / Batch</th>
+                  <th className="px-6 py-4">Stok Saat Ini</th>
                   <th className="px-6 py-4">Harga Jual</th>
                   <th className="px-6 py-4">HPP / Porsi</th>
                   <th className="px-6 py-4">Margin Bersih</th>
@@ -255,7 +265,24 @@ export default function ProductsPage() {
                         Bahan: {prod.recipes.map((r: any) => `${r.name} (${r.qty}${r.unit})`).join(", ")}
                       </div>
                     </td>
-                    <td className="px-6 py-4.5">{prod.yieldQty} porsi</td>
+                    <td className="px-6 py-4.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-800">{parseFloat(prod.currentStock).toFixed(2)}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                          parseFloat(prod.currentStock) <= 0
+                            ? "bg-rose-100 text-rose-600"
+                            : parseFloat(prod.currentStock) <= parseFloat(prod.minStock)
+                            ? "bg-amber-100 text-amber-600"
+                            : "bg-emerald-100 text-emerald-600"
+                        }`}>
+                          {parseFloat(prod.currentStock) <= 0
+                            ? "Habis"
+                            : parseFloat(prod.currentStock) <= parseFloat(prod.minStock)
+                            ? "Menipis"
+                            : "Ready"}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-6 py-4.5 font-medium text-slate-800">{formatRupiah(prod.sellPrice)}</td>
                     <td className="px-6 py-4.5 text-slate-600">{formatRupiah(prod.hppPerPorsi)}</td>
                     <td className="px-6 py-4.5 font-semibold text-emerald-400">{formatRupiah(prod.margin)}</td>
@@ -274,6 +301,20 @@ export default function ProductsPage() {
                     <td className="px-6 py-4.5 text-right space-x-1.5">
                       {isAdmin ? (
                         <>
+                          <button
+                            onClick={() => setProduksiProd(prod)}
+                            className="p-1.5 bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100 hover:border-orange-300 rounded-lg transition-all inline-flex items-center"
+                            title="Produksi Produk"
+                          >
+                            <PackagePlus className="w-3.5 h-3.5" />
+                          </button>
+                          <Link
+                            href={`/dashboard/products/${prod.id}/stock`}
+                            className="p-1.5 bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:border-slate-300 rounded-lg transition-all inline-flex items-center"
+                            title="Riwayat Stok"
+                          >
+                            <History className="w-3.5 h-3.5" />
+                          </Link>
                           <button
                             onClick={() => handleOpenEdit(prod)}
                             className="p-1.5 bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:border-slate-300 rounded-lg transition-all inline-flex items-center"
@@ -300,6 +341,18 @@ export default function ProductsPage() {
           </div>
         )}
       </div>
+
+      {/* PRODUKSI MODAL */}
+      {produksiProd && (
+        <ProduksiModal
+          product={produksiProd}
+          onClose={() => setProduksiProd(null)}
+          onSuccess={() => {
+            setProduksiProd(null);
+            mutateProd();
+          }}
+        />
+      )}
 
       {/* CREATE & EDIT DIALOG MODAL */}
       {modalOpen && (
@@ -366,6 +419,22 @@ export default function ProductsPage() {
                     className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
                     placeholder="1"
                     min="0.001"
+                    step="any"
+                  />
+                </div>
+              </div>
+
+              {/* Min Stock Field */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Batas Stok Minimum (Alert Menipis)</label>
+                  <input
+                    type="number"
+                    value={minStock}
+                    onChange={(e) => setMinStock(e.target.value)}
+                    className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
+                    placeholder="0"
+                    min="0"
                     step="any"
                   />
                 </div>

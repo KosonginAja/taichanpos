@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, orderItems, orderCounters, ingredients, stockMovements, products, productRecipes, cashTransactions, businessSettings, cashPockets, pocketTransactions } from "@/db/schema";
+import { orders, orderItems, orderCounters, products, productRecipes, ingredients, cashTransactions, businessSettings, cashPockets, pocketTransactions, productStockMovements } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 
@@ -95,9 +95,10 @@ export async function POST(req: Request) {
 
     // Checkout transaction
     const finalOrder = await db.transaction(async (tx) => {
-      // 1. Gather all recipe ingredients and calculate required stock
-      const combinedRequiredIngredients: { [ingId: number]: { qty: number; name: string } } = {};
+      // 1. Gather HPP per product and validate product stock
       const productHpps: { [prodId: number]: number } = {};
+      const updatedProducts: { id: number; newStock: number; qty: number }[] = [];
+      const stockErrors: string[] = [];
 
       for (const item of items) {
         const prod = await tx.query.products.findFirst({
@@ -106,6 +107,16 @@ export async function POST(req: Request) {
 
         if (!prod || !prod.isActive) {
           throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan atau sudah tidak aktif.`);
+        }
+
+        // Validate product stock
+        const currentStock = parseFloat(prod.currentStock.toString());
+        const orderQty = parseFloat(item.qty.toString());
+        if (currentStock < orderQty) {
+          const shortage = orderQty - currentStock;
+          stockErrors.push(`Stok ${prod.name} kurang: butuh ${orderQty}, tersedia ${currentStock} (kurang ${shortage}).`);
+        } else {
+          updatedProducts.push({ id: prod.id, newStock: currentStock - orderQty, qty: orderQty });
         }
 
         const recipes = await tx
@@ -129,42 +140,9 @@ export async function POST(req: Request) {
           // HPP contribution for 1 batch = qty * price. HPP per porsi = contribution / yieldQty
           const hppContributionPerPorsi = yieldQty > 0 ? (recQty * ingPrice) / yieldQty : 0;
           productHppCost += hppContributionPerPorsi;
-
-          // Combined ingredient calculation: required = item.qty * recQty / yieldQty
-          const requiredQty = yieldQty > 0 ? (parseFloat(item.qty) * recQty) / yieldQty : 0;
-
-          if (!combinedRequiredIngredients[r.ingredientId]) {
-            combinedRequiredIngredients[r.ingredientId] = { qty: 0, name: r.name };
-          }
-          combinedRequiredIngredients[r.ingredientId].qty += requiredQty;
         }
 
         productHpps[prod.id] = productHppCost;
-      }
-
-      // 2. Validate ingredients stock
-      const stockErrors: string[] = [];
-      const updatedIngredients: { id: number; newStock: number }[] = [];
-
-      for (const ingIdStr of Object.keys(combinedRequiredIngredients)) {
-        const ingId = parseInt(ingIdStr);
-        const reqInfo = combinedRequiredIngredients[ingId];
-
-        const ing = await tx.query.ingredients.findFirst({
-          where: eq(ingredients.id, ingId),
-        });
-
-        if (!ing) {
-          throw new Error(`Bahan baku dengan ID ${ingId} tidak ditemukan.`);
-        }
-
-        const currentStock = parseFloat(ing.stock.toString());
-        if (currentStock < reqInfo.qty) {
-          const shortage = reqInfo.qty - currentStock;
-          stockErrors.push(`Stok ${reqInfo.name} kurang: butuh ${reqInfo.qty.toFixed(2)} ${ing.unit}, tersedia ${currentStock.toFixed(2)} ${ing.unit} (kurang ${shortage.toFixed(2)}).`);
-        } else {
-          updatedIngredients.push({ id: ingId, newStock: currentStock - reqInfo.qty });
-        }
       }
 
       if (stockErrors.length > 0) {
@@ -189,21 +167,19 @@ export async function POST(req: Request) {
       const orderNumber = `INV-${dateKey}-${seq}`;
 
       // 4. Update stock and write movements
-      for (const update of updatedIngredients) {
-        const reqQty = combinedRequiredIngredients[update.id].qty;
-
+      for (const update of updatedProducts) {
         await tx
-          .update(ingredients)
+          .update(products)
           .set({
-            stock: update.newStock.toString(),
+            currentStock: update.newStock.toString(),
             updatedAt: new Date(),
           })
-          .where(eq(ingredients.id, update.id));
+          .where(eq(products.id, update.id));
 
-        await tx.insert(stockMovements).values({
-          ingredientId: update.id,
-          type: "order",
-          qty: (-reqQty).toString(),
+        await tx.insert(productStockMovements).values({
+          productId: update.id,
+          type: "sale",
+          qty: (-update.qty).toString(),
           refId: orderNumber,
           userId: session.id,
         });

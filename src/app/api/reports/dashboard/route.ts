@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, ingredients } from "@/db/schema";
+import { orders, ingredients, products } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { eq, and, gte, lte, desc, not } from "drizzle-orm";
 
@@ -51,6 +51,29 @@ export async function GET() {
       .filter((item) => item.status !== "Aman");
 
     const lowStockCount = lowStockIngredients.length;
+
+    // 2b. Fetch low product stock
+    const allActiveProducts = await db
+      .select()
+      .from(products)
+      .where(eq(products.isActive, true));
+
+    const lowStockProducts = allActiveProducts
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        currentStock: parseFloat(p.currentStock?.toString() || "0"),
+        minStock: parseFloat(p.minStock?.toString() || "0"),
+        status:
+          parseFloat(p.currentStock?.toString() || "0") <= 0
+            ? "Habis"
+            : parseFloat(p.currentStock?.toString() || "0") <= parseFloat(p.minStock?.toString() || "0")
+            ? "Menipis"
+            : "Aman",
+      }))
+      .filter((p) => p.status !== "Aman");
+
+    const lowStockProductCount = lowStockProducts.length;
 
     // 3. Recent orders (last 5)
     const recent = await db
@@ -118,8 +141,10 @@ export async function GET() {
         revenueToday,
         profitToday,
         lowStockCount,
+        lowStockProductCount,
       },
       lowStockIngredients: lowStockIngredients.slice(0, 5),
+      lowStockProducts: lowStockProducts.slice(0, 5),
       recentOrders,
       chartData,
     });

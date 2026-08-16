@@ -185,7 +185,7 @@ export default function ReportsPage() {
       startY: 28,
       theme: "grid",
       styles: { fontSize: 8, cellPadding: 3 },
-      headStyles: { fillColor: [79, 70, 229] }, // Indigo-600 to match theme
+      headStyles: { fillColor: [249, 115, 22] }, // Orange-500 to match theme
       footStyles: {
         fillColor: [226, 232, 240],
         textColor: [15, 23, 42],
@@ -293,15 +293,15 @@ export default function ReportsPage() {
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-950/40 border border-red-800 text-red-200 text-sm flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-red-400" />{" "}
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-500" />{" "}
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800 text-emerald-200 text-sm flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-emerald-400" />{" "}
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 text-sm flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 text-emerald-500" />{" "}
           <span>{successMsg}</span>
         </div>
       )}
@@ -339,7 +339,7 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="p-3.5 bg-indigo-950/10 border border-indigo-900 rounded-xl text-slate-800 text-xs leading-relaxed">
+          <div className="p-3.5 bg-orange-50/50 border border-orange-200 rounded-xl text-slate-700 text-xs leading-relaxed">
             Data akan diekspor dalam format PDF.
           </div>
         </div>
@@ -347,8 +347,7 @@ export default function ReportsPage() {
         {/* Downloadable sheets */}
         <div className="md:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 space-y-6">
           <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-orange-500" /> Lembar Kerja
-            Ekspor
+            <FileSpreadsheet className="w-5 h-5 text-orange-500" /> Unduh Laporan PDF
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

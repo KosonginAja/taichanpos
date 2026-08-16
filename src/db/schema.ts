@@ -44,6 +44,8 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   sellPrice: numeric("sell_price", { precision: 12, scale: 2 }).notNull(), // harga jual per porsi
   yieldQty: numeric("yield_qty", { precision: 12, scale: 3 }).notNull(), // batch yield quantity
+  currentStock: numeric("current_stock", { precision: 12, scale: 3 }).notNull().default("0"),
+  minStock: numeric("min_stock", { precision: 12, scale: 3 }).notNull().default("0"),
   isActive: boolean("is_active").notNull().default(true), // soft-delete
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -103,11 +105,35 @@ export const orderItems = pgTable("order_items", {
 export const stockMovements = pgTable("stock_movements", {
   id: serial("id").primaryKey(),
   ingredientId: integer("ingredient_id").notNull().references(() => ingredients.id),
-  type: text("type").notNull(), // 'restock' | 'order' | 'adjustment' | 'return'
+  type: text("type").notNull(), // 'restock' | 'order' | 'adjustment' | 'return' | 'production'
   qty: numeric("qty", { precision: 12, scale: 3 }).notNull(), // positive for additions, negative for deductions
   refId: text("ref_id"), // orderNumber for order/return, null for manual restock/adjustment
   reason: text("reason"), // 'waste', 'expired', 'correction', etc. for adjustment
   userId: integer("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// 9. Product Stock Movements Table
+export const productStockMovements = pgTable("product_stock_movements", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // 'production' | 'sale' | 'return' | 'adjustment'
+  qty: numeric("qty", { precision: 12, scale: 3 }).notNull(),
+  refId: text("ref_id"),
+  reason: text("reason"),
+  userId: integer("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// 10. Product Productions Table
+export const productProductions = pgTable("product_productions", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  unitsProduced: numeric("units_produced", { precision: 12, scale: 3 }).notNull(),
+  hppPerUnit: numeric("hpp_per_unit", { precision: 12, scale: 2 }).notNull(),
+  hppTotal: numeric("hpp_total", { precision: 12, scale: 2 }).notNull(),
+  producedBy: integer("produced_by").references(() => users.id),
+  note: text("note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -133,6 +159,8 @@ export const ingredientsRelations = relations(ingredients, ({ many }) => ({
 export const productsRelations = relations(products, ({ many }) => ({
   recipes: many(productRecipes),
   orderItems: many(orderItems),
+  stockMovements: many(productStockMovements),
+  productions: many(productProductions),
 }));
 
 export const productRecipesRelations = relations(productRecipes, ({ one }) => ({

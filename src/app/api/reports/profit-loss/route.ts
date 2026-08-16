@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     let totalRoundingAdjustment = 0;
 
     for (const o of ordersData) {
-      grossRevenue += parseFloat(o.revenueTotal.toString());
+      grossRevenue += parseFloat(o.grandTotal?.toString() || o.revenueTotal.toString());
       totalHpp += parseFloat(o.hppTotal.toString());
       totalTax += parseFloat(o.taxAmount.toString());
       totalServiceCharge += parseFloat(o.serviceChargeAmount.toString());
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
       expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + amt;
     }
 
-    const netProfit = grossProfit - totalExpenses + totalRoundingAdjustment;
+    const netProfit = grossProfit - totalExpenses;
 
     return NextResponse.json({
       summary: {

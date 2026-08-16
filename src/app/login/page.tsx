@@ -96,8 +96,8 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans text-slate-900">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl p-8 transition-all duration-300">
+    <main className="min-h-screen flex items-center justify-center bg-white p-4 font-sans text-slate-900">
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-sm p-8 transition-all duration-300">
         {/* Brand header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-orange-500">
@@ -110,13 +110,13 @@ export default function LoginPage() {
 
         {/* Error / Success messages */}
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-950/40 border border-red-800 text-red-200 text-sm flex items-start gap-3">
+          <div className="mb-6 p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-600 text-sm flex items-start gap-3">
             <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
         {success && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-950/40 border border-emerald-800 text-emerald-200 text-sm flex items-start gap-3">
+          <div className="mb-6 p-4 rounded-xl bg-white border border-orange-200 text-orange-600 text-sm flex items-start gap-3">
             <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <span>{success}</span>
           </div>
@@ -134,7 +134,7 @@ export default function LoginPage() {
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 transition-all placeholder:text-slate-600"
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all placeholder:text-slate-400"
                 placeholder="kasir01 atau kasir@gwehfood.com"
                 autoComplete="username"
               />
@@ -149,7 +149,7 @@ export default function LoginPage() {
                 required
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 transition-all placeholder:text-slate-600"
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all placeholder:text-slate-400"
                 placeholder="••••••••"
                 autoComplete="current-password"
               />
@@ -187,7 +187,7 @@ export default function LoginPage() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 transition-all placeholder:text-slate-600"
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all placeholder:text-slate-400"
                 placeholder="Budi Setiawan"
               />
             </div>
@@ -212,7 +212,7 @@ export default function LoginPage() {
                       e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
                     )
                   }
-                  className="w-full bg-slate-50/50 border border-slate-200 rounded-xl pl-8 pr-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 transition-all placeholder:text-slate-600"
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all placeholder:text-slate-400"
                   placeholder="kasir01"
                   autoComplete="username"
                   minLength={3}
@@ -230,7 +230,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 transition-all placeholder:text-slate-600"
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all placeholder:text-slate-400"
                 placeholder="budi@gwehfood.com"
                 autoComplete="email"
               />
@@ -245,15 +245,15 @@ export default function LoginPage() {
                 required
                 value={registerPassword}
                 onChange={(e) => setRegisterPassword(e.target.value)}
-                className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 transition-all placeholder:text-slate-600"
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all placeholder:text-slate-400"
                 placeholder="Min. 6 karakter"
                 autoComplete="new-password"
                 minLength={6}
               />
             </div>
 
-            <div className="p-3.5 bg-amber-950/30 border border-amber-900/60 rounded-xl text-amber-300 text-xs flex gap-2">
-              <span className="shrink-0 mt-0.5">⚠️</span>
+            <div className="p-3.5 bg-white border border-orange-200 rounded-xl text-orange-600 text-xs flex gap-2">
+              <span className="shrink-0 mt-0.5"><ShieldAlert className="w-4 h-4"/></span>
               <span>
                 Akun baru perlu persetujuan Admin sebelum bisa digunakan untuk
                 login.

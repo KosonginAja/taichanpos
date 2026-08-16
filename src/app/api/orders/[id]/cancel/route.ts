@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, orderItems, ingredients, stockMovements, productRecipes, products, cashTransactions, pocketTransactions } from "@/db/schema";
+import { orders, orderItems, ingredients, stockMovements, productRecipes, products, cashTransactions, pocketTransactions, productStockMovements } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
@@ -33,7 +33,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         .from(orderItems)
         .where(eq(orderItems.orderId, orderId));
 
-      // 2. For each item, look up recipe and return stock
+      // 2. For each item, return product stock
       for (const item of items) {
         if (!item.productId) continue; // Skip if no product ID
 
@@ -43,50 +43,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
         if (!prod) continue; // Skip if product completely deleted from DB
 
-        const recipes = await tx
-          .select()
-          .from(productRecipes)
-          .where(eq(productRecipes.productId, item.productId));
-
-        const yieldQty = parseFloat(prod.yieldQty.toString());
         const orderQtyVal = parseFloat(item.qty.toString());
+        const currentStock = parseFloat(prod.currentStock.toString());
+        const newStock = currentStock + orderQtyVal;
 
-        for (const r of recipes) {
-          const recQtyVal = parseFloat(r.qty.toString());
+        // Update products stock
+        await tx
+          .update(products)
+          .set({
+            currentStock: newStock.toString(),
+            updatedAt: new Date(),
+          })
+          .where(eq(products.id, item.productId));
 
-          // calculate quantity to return: (orderQty * recipeQty) / yieldQty
-          const returnQty = yieldQty > 0 ? (orderQtyVal * recQtyVal) / yieldQty : 0;
-
-          if (returnQty <= 0) continue;
-
-          // Fetch current ingredient stock
-          const ing = await tx.query.ingredients.findFirst({
-            where: eq(ingredients.id, r.ingredientId),
-          });
-
-          if (ing) {
-            const currentStock = parseFloat(ing.stock.toString());
-            const newStock = currentStock + returnQty;
-
-            // Update ingredients stock
-            await tx
-              .update(ingredients)
-              .set({
-                stock: newStock.toString(),
-                updatedAt: new Date(),
-              })
-              .where(eq(ingredients.id, r.ingredientId));
-
-            // Log stock movement return (positive quantity)
-            await tx.insert(stockMovements).values({
-              ingredientId: r.ingredientId,
-              type: "return",
-              qty: returnQty.toString(),
-              refId: `CANCEL-${order.orderNumber}`,
-              userId: session.id,
-            });
-          }
-        }
+        // Log product stock movement return (positive quantity)
+        await tx.insert(productStockMovements).values({
+          productId: item.productId,
+          type: "return",
+          qty: orderQtyVal.toString(),
+          refId: `CANCEL-${order.orderNumber}`,
+          userId: session.id,
+        });
       }
 
       // 3. Insert pembalik kas (retur penjualan) ke cash_transactions

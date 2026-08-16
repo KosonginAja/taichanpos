@@ -199,15 +199,7 @@ export default function ProfitLossPage() {
                 <span className="font-bold text-red-400">- {fmt(data.summary.totalExpenses)}</span>
               </div>
 
-              {data.summary.totalRoundingAdjustment !== 0 && (
-                <div className="flex justify-between items-center py-3 border-b border-slate-300">
-                  <span className="font-semibold text-slate-600">Selisih Pembulatan</span>
-                  <span className={`font-bold ${data.summary.totalRoundingAdjustment > 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                    {data.summary.totalRoundingAdjustment > 0 ? "+ " : ""}
-                    {fmt(data.summary.totalRoundingAdjustment)}
-                  </span>
-                </div>
-              )}
+
 
               <div className="flex justify-between items-center pt-6 pb-2 text-xl">
                 <span className="font-bold text-white">Laba Bersih</span>
