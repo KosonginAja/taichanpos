@@ -34,7 +34,7 @@ const CATEGORIES_OUT = [
 
 export default function CashPage() {
   const { data: userSession } = useSWR("/api/auth/me", fetcher);
-  const { data: pockets } = useSWR("/api/cash-pockets", fetcher);
+  const { data: pockets } = useSWR("/api/pocket-summary", fetcher);
   const isAdmin = userSession?.user?.role === "admin";
 
   const [filterType, setFilterType] = useState<"" | "in" | "out">("");
@@ -322,10 +322,19 @@ export default function CashPage() {
                   <select value={pocketId ?? ""} onChange={(e) => setPocketId(e.target.value ? parseInt(e.target.value) : null)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500">
                     <option value="">— Tidak dari kantong tertentu —</option>
                     {pockets.map((p: any) => (
-                      <option key={p.id} value={p.id}>{p.label} ({p.type === 'cost' ? 'HPP' : `${p.percentage}%`})</option>
+                      <option key={p.id} value={p.id}>{p.label} — Saldo: {formatRupiah(p.balance ?? 0)}</option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-slate-600 mt-1">Jika dipilih, kas keluar ini akan dicatat sebagai debit di kantong terkait.</p>
+                  {pocketId && pockets && (() => {
+                    const selected = pockets.find((p: any) => p.id === pocketId);
+                    return selected ? (
+                      <p className={`text-[11px] mt-1.5 font-medium ${(selected.balance ?? 0) <= 0 ? 'text-red-500' : 'text-slate-500'}`}>
+                        Saldo tersedia di kantong ini: <span className="font-bold">{formatRupiah(selected.balance ?? 0)}</span>
+                        {(selected.balance ?? 0) <= 0 && " ⚠️ Saldo tidak mencukupi"}
+                      </p>
+                    ) : null;
+                  })()}
+                  {!pocketId && <p className="text-[10px] text-slate-600 mt-1">Jika dipilih, kas keluar ini akan dicatat sebagai debit di kantong terkait.</p>}
                 </div>
               )}
 

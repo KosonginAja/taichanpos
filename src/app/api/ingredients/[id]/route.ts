@@ -80,3 +80,62 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const ingredientId = parseInt(id);
+
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    }
+
+    const current = await db.query.ingredients.findFirst({
+      where: eq(ingredients.id, ingredientId),
+    });
+
+    if (!current) {
+      return NextResponse.json({ error: "Ingredient not found" }, { status: 404 });
+    }
+
+    // Validation: Check if still used in active recipes before deleting/soft-deleting
+    const activeRecipeUsage = await db
+      .select({
+        productName: products.name,
+      })
+      .from(productRecipes)
+      .innerJoin(products, eq(productRecipes.productId, products.id))
+      .where(
+        and(
+          eq(productRecipes.ingredientId, ingredientId),
+          eq(products.isActive, true)
+        )
+      );
+
+    if (activeRecipeUsage.length > 0) {
+      const productNames = activeRecipeUsage.map((r) => r.productName).join(", ");
+      return NextResponse.json(
+        {
+          error: `Bahan baku ini tidak bisa dihapus karena sedang digunakan pada resep produk aktif: ${productNames}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    try {
+      await db.delete(ingredients).where(eq(ingredients.id, ingredientId));
+      return NextResponse.json({ success: true, message: "Bahan baku berhasil dihapus permanen" });
+    } catch (e: any) {
+      // If foreign key constraint violation (e.g. has stock movements)
+      if (e.code === '23503' || e.message.includes('foreign key')) {
+        await db.update(ingredients).set({ isActive: false }).where(eq(ingredients.id, ingredientId));
+        return NextResponse.json({ success: true, message: "Bahan baku dinonaktifkan (soft delete) karena memiliki riwayat stok" });
+      }
+      throw e;
+    }
+  } catch (error: any) {
+    console.error("DELETE ingredient error:", error);
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+  }
+}

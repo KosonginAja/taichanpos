@@ -186,19 +186,18 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDiscontinue = async (prod: any) => {
-    if (!confirm(`Apakah Anda yakin ingin menonaktifkan produk ${prod.name}?`)) return;
+  const handleDelete = async (prod: any) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus produk ${prod.name}?`)) return;
     try {
       const res = await fetch(`/api/products/${prod.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: false }),
+        method: "DELETE",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal menonaktifkan.");
+      if (!res.ok) throw new Error(data.error || "Gagal menghapus.");
+      alert(data.message);
       mutateProd();
     } catch (err: any) {
-      alert(err.message || "Gagal menonaktifkan.");
+      alert(err.message);
     }
   };
 
@@ -323,9 +322,9 @@ export default function ProductsPage() {
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDiscontinue(prod)}
-                            className="p-1.5 bg-slate-50 border border-slate-200 text-rose-400 hover:bg-rose-950/40 hover:border-rose-900 rounded-lg transition-all inline-flex items-center"
-                            title="Nonaktifkan (Soft Delete)"
+                            onClick={() => handleDelete(prod)}
+                            className="p-1.5 bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-lg transition-all inline-flex items-center"
+                            title="Hapus / Nonaktifkan"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

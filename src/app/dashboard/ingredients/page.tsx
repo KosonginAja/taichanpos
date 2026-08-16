@@ -164,23 +164,18 @@ export default function IngredientsPage() {
     }
   };
 
-  const handleSoftDelete = async (item: any) => {
-    if (!confirm(`Apakah Anda yakin ingin menonaktifkan bahan baku ${item.name}?`)) return;
-    setErrorMsg("");
-    setSuccessMsg("");
+  const handleDelete = async (item: any) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus bahan baku ${item.name}?`)) return;
     try {
       const res = await fetch(`/api/ingredients/${item.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: false }),
+        method: "DELETE",
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menghapus.");
-      setSuccessMsg(`Bahan baku ${item.name} berhasil dinonaktifkan.`);
+      alert(data.message);
       mutateIng();
-      mutateMov();
     } catch (err: any) {
-      alert(err.message || "Gagal menonaktifkan.");
+      alert(err.message);
     }
   };
 
@@ -293,9 +288,9 @@ export default function IngredientsPage() {
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleSoftDelete(item)}
-                              className="p-1.5 bg-slate-50 border border-slate-200 text-rose-400 hover:bg-rose-950/40 hover:border-rose-900 rounded-lg transition-all inline-flex items-center"
-                              title="Hapus (Soft Delete)"
+                              onClick={() => handleDelete(item)}
+                              className="p-1.5 bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-lg transition-all inline-flex items-center"
+                              title="Hapus / Nonaktifkan"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

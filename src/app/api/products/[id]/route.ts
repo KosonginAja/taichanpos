@@ -75,3 +75,38 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const productId = parseInt(id);
+
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
+    }
+
+    const current = await db.query.products.findFirst({
+      where: eq(products.id, productId),
+    });
+
+    if (!current) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    try {
+      await db.delete(products).where(eq(products.id, productId));
+      return NextResponse.json({ success: true, message: "Produk berhasil dihapus permanen" });
+    } catch (e: any) {
+      // If foreign key constraint violation (e.g. used in orders)
+      if (e.code === '23503' || e.message.includes('foreign key')) {
+        await db.update(products).set({ isActive: false }).where(eq(products.id, productId));
+        return NextResponse.json({ success: true, message: "Produk dinonaktifkan (soft delete) karena memiliki riwayat transaksi" });
+      }
+      throw e;
+    }
+  } catch (error: any) {
+    console.error("DELETE product error:", error);
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+  }
+}
