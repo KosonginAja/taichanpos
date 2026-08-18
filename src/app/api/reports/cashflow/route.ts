@@ -31,6 +31,10 @@ export async function GET(req: Request) {
 
     let totalIn = 0;
     let totalOut = 0;
+    let tunaiIn = 0;
+    let tunaiOut = 0;
+    let nonTunaiIn = 0;
+    let nonTunaiOut = 0;
     const inByCategory: Record<string, number> = {};
     const outByCategory: Record<string, number> = {};
     const inBySource: Record<string, number> = { manual: 0, order: 0, restock: 0 };
@@ -43,14 +47,20 @@ export async function GET(req: Request) {
         totalIn += t.amount;
         inByCategory[t.category] = (inByCategory[t.category] || 0) + t.amount;
         inBySource[t.sourceType] = (inBySource[t.sourceType] || 0) + t.amount;
+        if (t.paymentGroup === "tunai") tunaiIn += t.amount;
+        else if (t.paymentGroup === "non_tunai") nonTunaiIn += t.amount;
       } else {
         totalOut += t.amount;
         outByCategory[t.category] = (outByCategory[t.category] || 0) + t.amount;
         outBySource[t.sourceType] = (outBySource[t.sourceType] || 0) + t.amount;
+        if (t.paymentGroup === "tunai") tunaiOut += t.amount;
+        else if (t.paymentGroup === "non_tunai") nonTunaiOut += t.amount;
       }
     }
 
     const closingBalance = openingBalance + totalIn - totalOut;
+    const saldoTunai = tunaiIn - tunaiOut;
+    const saldoNonTunai = nonTunaiIn - nonTunaiOut;
 
     return NextResponse.json({
       summary: {
@@ -58,6 +68,12 @@ export async function GET(req: Request) {
         totalIn,
         totalOut,
         closingBalance,
+        saldoTunai,
+        saldoNonTunai,
+        tunaiIn,
+        tunaiOut,
+        nonTunaiIn,
+        nonTunaiOut,
       },
       inByCategory,
       outByCategory,

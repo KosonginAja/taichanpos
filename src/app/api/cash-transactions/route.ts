@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { type, category, isOperational, description, amount, date, note, pocketId } = body;
+    const { type, category, isOperational, description, amount, date, note, pocketId, paymentGroup } = body;
 
     if (!type || !category || !description || !amount || !date) {
       return NextResponse.json({ error: "Kolom wajib: type, category, description, amount, date" }, { status: 400 });
@@ -83,6 +83,7 @@ export async function POST(req: Request) {
       sourceType: "manual",
       sourceRefId: null,
       pocketId: pocketId || null,
+      paymentGroup: paymentGroup || null,
       createdBy: session.id,
     }).returning();
 

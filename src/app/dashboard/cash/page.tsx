@@ -54,6 +54,7 @@ export default function CashPage() {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [note, setNote] = useState("");
+  const [paymentGroup, setPaymentGroup] = useState<"tunai" | "non_tunai">("tunai");
 
   const [pocketId, setPocketId] = useState<number | null>(null);
 
@@ -82,7 +83,7 @@ export default function CashPage() {
 
   const openModal = (defaultType: "in" | "out" = "out") => {
     handleTypeToggle(defaultType);
-    setDescription(""); setAmount(""); setNote(""); setPocketId(null);
+    setDescription(""); setAmount(""); setNote(""); setPocketId(null); setPaymentGroup("tunai");
     setDate(new Date().toISOString().split("T")[0]);
     setErrorMsg(""); setSuccessMsg("");
     setShowModal(true);
@@ -95,7 +96,7 @@ export default function CashPage() {
       const res = await fetch("/api/cash-transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: txType, category, isOperational, description, amount: parseFloat(amount), date, note, pocketId: pocketId || undefined }),
+        body: JSON.stringify({ type: txType, category, isOperational, description, amount: parseFloat(amount), date, note, pocketId: pocketId || undefined, paymentGroup }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -231,6 +232,15 @@ export default function CashPage() {
                     <td className="px-5 py-4">
                       <div className="text-slate-800 text-sm">{tx.description}</div>
                       {tx.note && <div className="text-xs text-slate-500 mt-0.5">{tx.note}</div>}
+                      {tx.paymentGroup && (
+                        <div className={`inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                          tx.paymentGroup === 'tunai'
+                            ? 'bg-orange-50 text-orange-500 border border-orange-200'
+                            : 'bg-blue-50 text-blue-500 border border-blue-200'
+                        }`}>
+                          {tx.paymentGroup === 'tunai' ? '💵 Tunai' : '💳 Non-Tunai'}
+                        </div>
+                      )}
                     </td>
                     <td className="px-5 py-4">
                       {tx.sourceType === "manual" ? (
@@ -314,6 +324,29 @@ export default function CashPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1.5">Catatan (Opsional)</label>
                 <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500" />
+              </div>
+
+              {/* Payment Group — Wajib Diisi */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Dibayar dengan <span className="text-red-400">*</span></label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setPaymentGroup("tunai")}
+                    className={`py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                      paymentGroup === "tunai"
+                        ? "bg-orange-500/10 border-orange-500 text-orange-600"
+                        : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700"
+                    }`}>
+                    💵 Tunai
+                  </button>
+                  <button type="button" onClick={() => setPaymentGroup("non_tunai")}
+                    className={`py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                      paymentGroup === "non_tunai"
+                        ? "bg-blue-500/10 border-blue-500 text-blue-600"
+                        : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700"
+                    }`}>
+                    💳 Non-Tunai
+                  </button>
+                </div>
               </div>
 
               {txType === "out" && pockets && pockets.length > 0 && (

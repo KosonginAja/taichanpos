@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
     }
 
-    const { ingredientId, qty, refId, purchaseCost } = await req.json();
+    const { ingredientId, qty, refId, purchaseCost, paymentGroup } = await req.json();
 
     if (!ingredientId || qty === undefined || parseFloat(qty) <= 0) {
       return NextResponse.json({ error: "Invalid parameters. Qty must be greater than 0." }, { status: 400 });
@@ -61,6 +61,7 @@ export async function POST(req: Request) {
           date: new Date(),
           sourceType: "restock",
           sourceRefId: movement.id.toString(),
+          paymentGroup: paymentGroup === "non_tunai" ? "non_tunai" : "tunai", // default tunai
           createdBy: session.id,
         });
       }

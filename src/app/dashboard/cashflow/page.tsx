@@ -131,13 +131,37 @@ export default function CashflowPage() {
               { label: "Saldo Awal", value: data.summary.openingBalance, color: "blue" },
               { label: "Total Masuk", value: data.summary.totalIn, color: "emerald" },
               { label: "Total Keluar", value: data.summary.totalOut, color: "red" },
-              { label: "Saldo Akhir", value: data.summary.closingBalance, color: data.summary.closingBalance >= 0 ? "indigo" : "orange" },
+              { label: "Saldo Akhir Total", value: data.summary.closingBalance, color: data.summary.closingBalance >= 0 ? "indigo" : "orange" },
             ].map((card) => (
               <div key={card.label} className={`rounded-2xl p-4 border bg-${card.color}-500/10 border-${card.color}-500/20`}>
                 <p className={`text-xs font-semibold text-${card.color}-400 uppercase tracking-wider`}>{card.label}</p>
                 <p className={`text-xl font-bold text-${card.color}-400 mt-1 truncate`}>{fmt(card.value)}</p>
               </div>
             ))}
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="rounded-2xl p-4 border bg-orange-500/10 border-orange-500/20 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-orange-500 uppercase tracking-wider">Saldo Tunai</p>
+                <p className="text-2xl font-bold text-orange-500 mt-1">{fmt(data.summary.saldoTunai)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-orange-400/80">In: {fmt(data.summary.tunaiIn)}</p>
+                <p className="text-xs text-orange-400/80">Out: {fmt(data.summary.tunaiOut)}</p>
+              </div>
+            </div>
+            
+            <div className="rounded-2xl p-4 border bg-blue-500/10 border-blue-500/20 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-blue-500 uppercase tracking-wider">Saldo Non-Tunai</p>
+                <p className="text-2xl font-bold text-blue-500 mt-1">{fmt(data.summary.saldoNonTunai)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-blue-400/80">In: {fmt(data.summary.nonTunaiIn)}</p>
+                <p className="text-xs text-blue-400/80">Out: {fmt(data.summary.nonTunaiOut)}</p>
+              </div>
+            </div>
           </div>
 
           {/* Kas Masuk Breakdown */}

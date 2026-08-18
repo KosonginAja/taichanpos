@@ -76,6 +76,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         date: new Date(),
         sourceType: "order",
         sourceRefId: order.orderNumber,
+        paymentGroup: order.paymentMethod === "cash" ? "tunai" : "non_tunai",
         createdBy: session.id,
       });
 

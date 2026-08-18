@@ -238,6 +238,7 @@ export const cashTransactions = pgTable("cash_transactions", {
   sourceType: text("source_type").notNull().default("manual"), // 'manual' | 'order' | 'restock' | 'profit_allocation'
   sourceRefId: text("source_ref_id"), // orderNumber or stock_movements.id or profit_allocations.id
   pocketId: integer("pocket_id").references(() => cashPockets.id),
+  paymentGroup: text("payment_group"), // 'tunai' | 'non_tunai' | null (unknown/legacy)
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

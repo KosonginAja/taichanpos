@@ -276,6 +276,7 @@ export async function POST(req: Request) {
         date: now,
         sourceType: "order",
         sourceRefId: orderNumber,
+        paymentGroup: paymentMethod === "cash" ? "tunai" : "non_tunai",
         createdBy: session.id,
       });
 

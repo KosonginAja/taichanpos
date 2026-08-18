@@ -41,6 +41,7 @@ export default function IngredientsPage() {
   const [actionReason, setActionReason] = useState("correction");
   const [actionRef, setActionRef] = useState("");
   const [purchaseCost, setPurchaseCost] = useState(""); // optional: total biaya restock
+  const [paymentGroup, setPaymentGroup] = useState<"tunai" | "non_tunai">("tunai");
 
   // Audit filters
   const [filterType, setFilterType] = useState("");
@@ -88,6 +89,7 @@ export default function IngredientsPage() {
     setActionReason("correction");
     setActionRef("");
     setPurchaseCost("");
+    setPaymentGroup("tunai");
     setErrorMsg("");
     setSuccessMsg("");
   };
@@ -140,6 +142,7 @@ export default function IngredientsPage() {
             qty: parseFloat(actionQty),
             refId: actionRef,
             purchaseCost: purchaseCost ? parseFloat(purchaseCost) : undefined,
+            paymentGroup: paymentGroup,
           }),
         });
       } else if (modalType === "adjustment") {
@@ -580,6 +583,29 @@ export default function IngredientsPage() {
                       placeholder="Misal: 150000"
                     />
                   </div>
+                  {purchaseCost && parseFloat(purchaseCost) > 0 && (
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1.5">Dibayar dengan <span className="text-red-400">*</span></label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => setPaymentGroup("tunai")}
+                          className={`py-2 rounded-lg text-xs font-bold border transition-all ${
+                            paymentGroup === "tunai"
+                              ? "bg-orange-500/10 border-orange-500 text-orange-600"
+                              : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700"
+                          }`}>
+                          💵 Tunai
+                        </button>
+                        <button type="button" onClick={() => setPaymentGroup("non_tunai")}
+                          className={`py-2 rounded-lg text-xs font-bold border transition-all ${
+                            paymentGroup === "non_tunai"
+                              ? "bg-blue-500/10 border-blue-500 text-blue-600"
+                              : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700"
+                          }`}>
+                          💳 Non-Tunai
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
