@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, ingredients, products } from "@/db/schema";
+import { orders, ingredients, products, cashTransactions } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { eq, and, gte, lte, desc, not } from "drizzle-orm";
 
@@ -135,6 +135,28 @@ export async function GET() {
       });
     }
 
+    // 5. Fetch today's operational expenses
+    const todayExpensesData = await db
+      .select()
+      .from(cashTransactions)
+      .where(
+        and(
+          eq(cashTransactions.type, "out"),
+          eq(cashTransactions.isOperational, true),
+          gte(cashTransactions.date, startOfToday),
+          lte(cashTransactions.date, endOfToday)
+        )
+      );
+
+    let expensesToday = 0;
+    const expensesByCategoryToday: Record<string, number> = {};
+    for (const t of todayExpensesData) {
+      if (t.category === "Pembelian Bahan Baku") continue;
+      const amt = parseFloat(t.amount.toString());
+      expensesToday += amt;
+      expensesByCategoryToday[t.category] = (expensesByCategoryToday[t.category] || 0) + amt;
+    }
+
     return NextResponse.json({
       summary: {
         totalOrdersToday,
@@ -142,7 +164,9 @@ export async function GET() {
         profitToday,
         lowStockCount,
         lowStockProductCount,
+        expensesToday,
       },
+      expensesByCategoryToday,
       lowStockIngredients: lowStockIngredients.slice(0, 5),
       lowStockProducts: lowStockProducts.slice(0, 5),
       recentOrders,

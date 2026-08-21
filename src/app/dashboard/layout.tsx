@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Database, Coffee, ShoppingBag, BarChart3, LogOut, User, Menu, X, Settings, Wallet, Landmark, TrendingUp, PieChart } from "lucide-react";
+import { Home, Database, Coffee, ShoppingBag, BarChart3, LogOut, User, Menu, X, Settings, Wallet, Landmark, TrendingUp, PieChart, LineChart, Percent } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -31,11 +31,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/login");
-      router.refresh();
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (res.ok) {
+        router.push("/login");
+      }
     } catch (err) {
-      console.error("Logout failed:", err);
+      console.error("Logout error", err);
     }
   };
 
@@ -65,6 +66,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       items: [
         { name: "Laporan & Ekspor", href: "/dashboard/reports", icon: BarChart3 },
         { name: "Lap. Arus Kas", href: "/dashboard/cashflow", icon: Landmark },
+        { name: "Lap. Distribusi Bulanan", href: "/dashboard/reports/monthly-distribution", icon: Percent },
+        { name: "Analisis Menu", href: "/dashboard/reports/menu-analysis", icon: LineChart },
       ],
     },
     {

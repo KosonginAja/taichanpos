@@ -10,6 +10,8 @@ import {
   ArrowRight,
   Loader2,
   RefreshCw,
+  Download,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -22,6 +24,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import jsPDF from "jspdf";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -67,6 +70,76 @@ export default function DashboardPage() {
 
   const { summary, lowStockIngredients, lowStockProducts, recentOrders, chartData } = data;
 
+  const downloadDailyPDF = () => {
+    if (!data) return;
+    const doc = new jsPDF();
+    const todayStr = new Date().toLocaleDateString("id-ID", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const revenue = parseFloat(summary.revenueToday || 0);
+    const profit = parseFloat(summary.profitToday || 0);
+    const hpp = revenue - profit;
+    const expenses = parseFloat(summary.expensesToday || 0);
+    const netProfit = profit - expenses;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("LAPORAN RINGKASAN HARIAN", 14, 20);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Tanggal Laporan: ${todayStr}`, 14, 27);
+    doc.line(14, 31, 196, 31);
+
+    let y = 42;
+    const renderRow = (title: string, value: string, bold = false) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.text(title, 14, y);
+      doc.text(value, 196, y, { align: "right" });
+      y += 8;
+    };
+
+    renderRow("Jumlah Pesanan Sukses", summary.totalOrdersToday.toString());
+    renderRow("Total Omzet Kotor (Revenue)", formatRupiah(revenue));
+    renderRow("Total Bahan Baku (HPP)", `- ${formatRupiah(hpp)}`);
+    doc.line(14, y - 4, 196, y - 4);
+    renderRow("Laba Kotor (Gross Profit)", formatRupiah(profit), true);
+    y += 2;
+
+    renderRow("Beban Operasional", "");
+    if (data.expensesByCategoryToday && Object.keys(data.expensesByCategoryToday).length > 0) {
+      Object.entries(data.expensesByCategoryToday).forEach(([cat, amt]) => {
+        renderRow(`  - ${cat}`, `- ${formatRupiah(amt as number)}`);
+      });
+    } else {
+      renderRow("  - Tidak ada pengeluaran hari ini", formatRupiah(0));
+    }
+    doc.line(14, y - 4, 196, y - 4);
+    renderRow("Total Beban Operasional", `- ${formatRupiah(expenses)}`, true);
+    
+    y += 2;
+    doc.setLineWidth(0.5);
+    doc.line(14, y - 4, 196, y - 4);
+    renderRow("LABA BERSIH HARIAN", formatRupiah(netProfit), true);
+    doc.line(14, y - 4, 196, y - 4);
+
+    y += 15;
+    doc.text("Laporan ini diunduh secara otomatis dari sistem POS Taralaya.", 14, y);
+    y += 15;
+    doc.text("Disiapkan Oleh:", 14, y);
+    doc.text("Diverifikasi Oleh:", 140, y);
+    y += 20;
+    doc.text("_______________________", 14, y);
+    doc.text("_______________________", 140, y);
+
+    const fileDate = new Date().toISOString().split("T")[0];
+    doc.save(`Laporan_Harian_${fileDate}.pdf`);
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Page Header */}
@@ -75,14 +148,22 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Ikhtisar Usaha</h1>
           <p className="text-slate-500 mt-1">Laporan penjualan dan ketersediaan stok hari ini</p>
         </div>
-        <button
-          onClick={() => mutate()}
-          disabled={isValidating}
-          className="self-start flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-800 hover:text-slate-900 text-sm font-semibold transition-all disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${isValidating ? "animate-spin" : ""}`} />
-          Segarkan Data
-        </button>
+        <div className="flex items-center gap-2 self-start">
+          <button
+            onClick={downloadDailyPDF}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-orange-500/15"
+          >
+            <FileText className="w-4 h-4" /> Unduh PDF Harian
+          </button>
+          <button
+            onClick={() => mutate()}
+            disabled={isValidating}
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-800 hover:text-slate-900 text-sm font-semibold transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isValidating ? "animate-spin" : ""}`} />
+            Segarkan Data
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}

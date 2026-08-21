@@ -24,6 +24,7 @@ const CATEGORIES_IN = [
 const CATEGORIES_OUT = [
   { label: "Gaji", isOperational: true },
   { label: "Sewa", isOperational: true },
+  { label: "Bahan Habis Pakai", isOperational: true },
   { label: "Listrik", isOperational: true },
   { label: "Transport", isOperational: true },
   { label: "Pembelian Aset", isOperational: false },
@@ -302,6 +303,11 @@ export default function CashPage() {
                 <select value={category} onChange={(e) => handleCategoryChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500">
                   {categoryList.map((c) => <option key={c.label} value={c.label}>{c.label}</option>)}
                 </select>
+                {category === "Gaji" && (
+                  <p className="text-[10px] text-amber-600 mt-1 font-semibold">
+                    ⚠️ Kategori Gaji hanya untuk staf/karyawan eksternal. Sesuai kontrak investor, kompensasi Owner/Mitra diambil dari profit sharing.
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-3 bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3">
