@@ -34,8 +34,18 @@ export const ingredients = pgTable("ingredients", {
   stock: numeric("stock", { precision: 12, scale: 3 }).notNull().default("0"),
   minStock: numeric("min_stock", { precision: 12, scale: 3 }).notNull().default("0"),
   isActive: boolean("is_active").notNull().default(true), // soft-delete
+  type: text("type").notNull().default("raw"), // "raw" | "intermediate"
+  yieldQty: numeric("yield_qty", { precision: 12, scale: 3 }).notNull().default("1"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// 2b. Ingredient Recipes Table (for intermediate ingredients)
+export const ingredientRecipes = pgTable("ingredient_recipes", {
+  id: serial("id").primaryKey(),
+  parentIngredientId: integer("parent_ingredient_id").notNull().references(() => ingredients.id, { onDelete: "cascade" }),
+  childIngredientId: integer("child_ingredient_id").notNull().references(() => ingredients.id),
+  qty: numeric("qty", { precision: 12, scale: 3 }).notNull(),
 });
 
 // 3. Products Table
@@ -154,6 +164,21 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 export const ingredientsRelations = relations(ingredients, ({ many }) => ({
   recipes: many(productRecipes),
   movements: many(stockMovements),
+  parentRecipes: many(ingredientRecipes, { relationName: "parentIngredient" }),
+  childRecipes: many(ingredientRecipes, { relationName: "childIngredient" }),
+}));
+
+export const ingredientRecipesRelations = relations(ingredientRecipes, ({ one }) => ({
+  parentIngredient: one(ingredients, {
+    fields: [ingredientRecipes.parentIngredientId],
+    references: [ingredients.id],
+    relationName: "parentIngredient",
+  }),
+  childIngredient: one(ingredients, {
+    fields: [ingredientRecipes.childIngredientId],
+    references: [ingredients.id],
+    relationName: "childIngredient",
+  }),
 }));
 
 export const productsRelations = relations(products, ({ many }) => ({

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ingredients, productRecipes, products } from "@/db/schema";
+import { ingredients, productRecipes, products, ingredientRecipes } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
 
@@ -15,7 +15,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
     }
 
-    const { name, unit, price, minStock, isActive } = await req.json();
+    const { name, unit, price, minStock, isActive, type, yieldQty, recipes } = await req.json();
 
     // Check if ingredient exists
     const current = await db.query.ingredients.findFirst({
@@ -53,26 +53,56 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
-    // Perform update
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (unit !== undefined) updateData.unit = unit;
-    if (price !== undefined) {
-      if (parseFloat(price) < 0) return NextResponse.json({ error: "Price cannot be negative" }, { status: 400 });
-      updateData.price = price.toString();
-    }
-    if (minStock !== undefined) {
-      if (parseFloat(minStock) < 0) return NextResponse.json({ error: "Min stock cannot be negative" }, { status: 400 });
-      updateData.minStock = minStock.toString();
-    }
-    if (isActive !== undefined) updateData.isActive = isActive;
-    updateData.updatedAt = new Date();
+    // Perform update in a transaction to handle recipes
+    const updated = await db.transaction(async (tx) => {
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (unit !== undefined) updateData.unit = unit;
+      if (price !== undefined) {
+        if (parseFloat(price) < 0) throw new Error("Price cannot be negative");
+        updateData.price = price.toString();
+      }
+      if (minStock !== undefined) {
+        if (parseFloat(minStock) < 0) throw new Error("Min stock cannot be negative");
+        updateData.minStock = minStock.toString();
+      }
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (type !== undefined) updateData.type = type;
+      if (yieldQty !== undefined) {
+        if (parseFloat(yieldQty) <= 0) throw new Error("Yield quantity must be greater than zero");
+        updateData.yieldQty = yieldQty.toString();
+      }
+      updateData.updatedAt = new Date();
 
-    const [updated] = await db
-      .update(ingredients)
-      .set(updateData)
-      .where(eq(ingredients.id, ingredientId))
-      .returning();
+      const [updatedIng] = await tx
+        .update(ingredients)
+        .set(updateData)
+        .where(eq(ingredients.id, ingredientId))
+        .returning();
+
+      // Handle recipes update if it is an intermediate ingredient
+      const activeType = type !== undefined ? type : current.type;
+      if (activeType === "intermediate" && recipes !== undefined && Array.isArray(recipes)) {
+        // Delete old recipes
+        await tx.delete(ingredientRecipes).where(eq(ingredientRecipes.parentIngredientId, ingredientId));
+        
+        // Insert new recipes
+        for (const recipe of recipes) {
+          if (recipe.childIngredientId && parseFloat(recipe.qty) > 0) {
+            await tx.insert(ingredientRecipes).values({
+              parentIngredientId: ingredientId,
+              childIngredientId: recipe.childIngredientId,
+              qty: recipe.qty.toString(),
+            });
+          }
+        }
+      } else if (activeType === "raw") {
+        // If changed to raw, delete any existing recipes
+        await tx.delete(ingredientRecipes).where(eq(ingredientRecipes.parentIngredientId, ingredientId));
+      }
+
+      return updatedIng;
+    });
 
     return NextResponse.json(updated);
   } catch (error: any) {

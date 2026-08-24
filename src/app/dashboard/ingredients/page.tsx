@@ -14,6 +14,7 @@ import {
   Loader2,
   CheckCircle,
   HelpCircle,
+  X,
 } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -26,7 +27,7 @@ export default function IngredientsPage() {
   const isAdmin = userSession?.user?.role === "admin";
 
   // State controls
-  const [modalType, setModalType] = useState<"create" | "edit" | "restock" | "adjustment" | null>(null);
+  const [modalType, setModalType] = useState<"create" | "edit" | "restock" | "adjustment" | "produce" | null>(null);
   const [selectedIng, setSelectedIng] = useState<any>(null);
   
   // Form fields
@@ -35,6 +36,9 @@ export default function IngredientsPage() {
   const [price, setPrice] = useState("");
   const [minStock, setMinStock] = useState("");
   const [stock, setStock] = useState(""); // for initial creation
+  const [type, setType] = useState<"raw" | "intermediate">("raw");
+  const [yieldQty, setYieldQty] = useState("1");
+  const [recipeRows, setRecipeRows] = useState<any[]>([{ childIngredientId: 0, qty: "" }]);
   
   // Actions fields
   const [actionQty, setActionQty] = useState("");
@@ -85,6 +89,9 @@ export default function IngredientsPage() {
     setPrice("");
     setMinStock("");
     setStock("");
+    setType("raw");
+    setYieldQty("1");
+    setRecipeRows([{ childIngredientId: 0, qty: "" }]);
     setActionQty("");
     setActionReason("correction");
     setActionRef("");
@@ -94,16 +101,23 @@ export default function IngredientsPage() {
     setSuccessMsg("");
   };
 
-  const handleOpenModal = (type: "create" | "edit" | "restock" | "adjustment", item: any = null) => {
+  const handleOpenModal = (typeVal: "create" | "edit" | "restock" | "adjustment" | "produce", item: any = null) => {
     resetForm();
     setSelectedIng(item);
-    setModalType(type);
+    setModalType(typeVal);
 
     if (item) {
       setName(item.name);
       setUnit(item.unit);
       setPrice(item.price.toString());
       setMinStock(item.minStock.toString());
+      setType(item.type || "raw");
+      setYieldQty(item.yieldQty ? item.yieldQty.toString() : "1");
+      if (item.recipes && item.recipes.length > 0) {
+        setRecipeRows(item.recipes.map((r: any) => ({ childIngredientId: r.childIngredientId, qty: r.qty.toString() })));
+      } else {
+        setRecipeRows([{ childIngredientId: 0, qty: "" }]);
+      }
     }
   };
 
@@ -112,6 +126,56 @@ export default function IngredientsPage() {
     setSelectedIng(null);
     resetForm();
   };
+
+  // Real-time HPP calculation for intermediate ingredients in Modal
+  const [liveHpp, setLiveHpp] = useState(0);
+  const { data: allIngredients } = useSWR("/api/ingredients", fetcher);
+  
+  require("react").useEffect(() => {
+    if (type !== "intermediate" || !allIngredients) return;
+    let totalCost = 0;
+    for (const row of recipeRows) {
+      const childId = row.childIngredientId;
+      const rowQty = parseFloat(row.qty || "0");
+      if (childId > 0 && rowQty > 0) {
+        const ing = allIngredients.find((i: any) => i.id === childId);
+        if (ing) {
+          totalCost += rowQty * ing.price;
+        }
+      }
+    }
+    const yieldVal = parseFloat(yieldQty || "1");
+    setLiveHpp(yieldVal > 0 ? totalCost / yieldVal : 0);
+  }, [recipeRows, yieldQty, type, allIngredients]);
+
+  const handleAddRecipeRow = () => {
+    setRecipeRows([...recipeRows, { childIngredientId: 0, qty: "" }]);
+  };
+
+  const handleRemoveRecipeRow = (index: number) => {
+    const updated = recipeRows.filter((_, i) => i !== index);
+    setRecipeRows(updated.length > 0 ? updated : [{ childIngredientId: 0, qty: "" }]);
+  };
+
+  const handleRecipeChange = (index: number, field: string, value: any) => {
+    const updated = [...recipeRows];
+    updated[index] = { ...updated[index], [field]: value };
+    setRecipeRows(updated);
+  };
+
+  const isProduceShortage = (() => {
+    if (modalType !== "produce" || !selectedIng || !allIngredients) return false;
+    const unitsToProduce = parseFloat(actionQty) || 0;
+    const yieldVal = parseFloat(selectedIng.yieldQty) || 1;
+    const multiplierVal = unitsToProduce > 0 ? unitsToProduce / yieldVal : 0;
+    for (const r of selectedIng.recipes || []) {
+      const reqQty = r.qty * multiplierVal;
+      const ingObj = allIngredients.find((i: any) => i.id === r.childIngredientId);
+      const avail = ingObj ? ingObj.stock : 0;
+      if (avail < reqQty) return true;
+    }
+    return false;
+  })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,13 +189,38 @@ export default function IngredientsPage() {
         res = await fetch("/api/ingredients", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, unit, price: parseFloat(price), minStock: parseFloat(minStock || "0"), stock: parseFloat(stock || "0") }),
+          body: JSON.stringify({
+            name,
+            unit,
+            price: type === "intermediate" ? liveHpp : parseFloat(price),
+            minStock: parseFloat(minStock || "0"),
+            stock: parseFloat(stock || "0"),
+            type,
+            yieldQty: type === "intermediate" ? parseFloat(yieldQty) : 1,
+            recipes: type === "intermediate"
+              ? recipeRows
+                  .filter((r) => r.childIngredientId > 0 && parseFloat(r.qty) > 0)
+                  .map((r) => ({ childIngredientId: r.childIngredientId, qty: parseFloat(r.qty) }))
+              : undefined,
+          }),
         });
       } else if (modalType === "edit") {
         res = await fetch(`/api/ingredients/${selectedIng.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, unit, price: parseFloat(price), minStock: parseFloat(minStock || "0") }),
+          body: JSON.stringify({
+            name,
+            unit,
+            price: type === "intermediate" ? liveHpp : parseFloat(price),
+            minStock: parseFloat(minStock || "0"),
+            type,
+            yieldQty: type === "intermediate" ? parseFloat(yieldQty) : 1,
+            recipes: type === "intermediate"
+              ? recipeRows
+                  .filter((r) => r.childIngredientId > 0 && parseFloat(r.qty) > 0)
+                  .map((r) => ({ childIngredientId: r.childIngredientId, qty: parseFloat(r.qty) }))
+              : undefined,
+          }),
         });
       } else if (modalType === "restock") {
         res = await fetch("/api/ingredients/restock", {
@@ -150,6 +239,15 @@ export default function IngredientsPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ingredientId: selectedIng.id, qty: parseFloat(actionQty), reason: actionReason }),
+        });
+      } else if (modalType === "produce") {
+        res = await fetch("/api/ingredients/production", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ingredientId: selectedIng.id,
+            unitsProduced: parseFloat(actionQty),
+          }),
         });
       }
 
@@ -247,7 +345,16 @@ export default function IngredientsPage() {
                 <tbody className="divide-y divide-slate-800/60">
                   {ingredients.map((item: any) => (
                     <tr key={item.id} className="hover:bg-slate-50/20 transition-all">
-                      <td className="px-6 py-4.5 font-medium text-slate-800">{item.name}</td>
+                      <td className="px-6 py-4.5 font-medium text-slate-800">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{item.name}</span>
+                          {item.type === "intermediate" && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wider shrink-0">
+                              Setengah Jadi
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4.5">{formatRupiah(item.price)} / {item.unit}</td>
                       <td className="px-6 py-4.5 font-semibold text-slate-900">
                         {item.stock.toFixed(2)} <span className="text-xs text-slate-500">{item.unit}</span>
@@ -266,9 +373,18 @@ export default function IngredientsPage() {
                           {item.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4.5 text-right space-x-1.5">
+                      <td className="px-6 py-4.5 text-right space-x-1.5 whitespace-nowrap">
                         {isAdmin ? (
                           <>
+                            {item.type === "intermediate" && (
+                              <button
+                                onClick={() => handleOpenModal("produce", item)}
+                                className="px-2.5 py-1 text-xs font-semibold bg-purple-950 border border-purple-900 text-purple-400 hover:bg-purple-900 hover:text-white rounded-lg transition-all"
+                                title="Produksi (Olah Bahan)"
+                              >
+                                Produksi
+                              </button>
+                            )}
                             <button
                               onClick={() => handleOpenModal("restock", item)}
                               className="px-2.5 py-1 text-xs font-semibold bg-emerald-950 border border-emerald-900 text-emerald-400 hover:bg-emerald-900 hover:text-white rounded-lg transition-all"
@@ -445,13 +561,14 @@ export default function IngredientsPage() {
 
       {/* CRUD / RESTOCK / ADJUSTMENT MODALS */}
       {modalType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-50/80 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-50/80 backdrop-blur-sm overflow-y-auto">
+          <div className={`w-full ${(modalType === "create" || modalType === "edit") && type === "intermediate" ? "max-w-2xl" : "max-w-md"} bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-200 max-h-[90vh] overflow-y-auto my-8`}>
             <h3 className="text-lg font-bold text-slate-900 mb-4 capitalize">
               {modalType === "create" && "Tambah Bahan Baku Baru"}
               {modalType === "edit" && `Edit Bahan Baku: ${selectedIng?.name}`}
               {modalType === "restock" && `Restock (Tambah Stok): ${selectedIng?.name}`}
               {modalType === "adjustment" && `Penyesuaian Stok: ${selectedIng?.name}`}
+              {modalType === "produce" && `Produksi Bahan Setengah Jadi: ${selectedIng?.name}`}
             </h3>
 
             {errorMsg && (
@@ -472,16 +589,30 @@ export default function IngredientsPage() {
               {/* Form fields based on Modal Type */}
               {(modalType === "create" || modalType === "edit") && (
                 <>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">Nama Bahan Baku</label>
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
-                      placeholder="Gula Pasir"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Nama Bahan Baku</label>
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
+                        placeholder="Gula Pasir"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Tipe Bahan Baku</label>
+                      <select
+                        value={type}
+                        onChange={(e) => setType(e.target.value as any)}
+                        className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500 font-medium"
+                      >
+                        <option value="raw">Mentah (Raw Material)</option>
+                        <option value="intermediate">Setengah Jadi (Sub-Recipe)</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -496,17 +627,21 @@ export default function IngredientsPage() {
                         <option value="gram">gram (Gram)</option>
                         <option value="liter">liter (Liter)</option>
                         <option value="pcs">pcs (Pcs)</option>
+                        <option value="tusuk">tusuk (Tusuk Sate)</option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 mb-1">Harga Beli / Satuan</label>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">
+                        {type === "intermediate" ? "Estimasi Cost / Satuan (Auto)" : "Harga Beli / Satuan (Rp)"}
+                      </label>
                       <input
                         type="number"
-                        required
-                        value={price}
+                        required={type !== "intermediate"}
+                        disabled={type === "intermediate"}
+                        value={type === "intermediate" ? liveHpp.toFixed(0) : price}
                         onChange={(e) => setPrice(e.target.value)}
-                        className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
+                        className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500 disabled:opacity-75 disabled:bg-slate-100"
                         placeholder="18000"
                         min="0"
                       />
@@ -528,7 +663,7 @@ export default function IngredientsPage() {
                       />
                     </div>
 
-                    {modalType === "create" && (
+                    {modalType === "create" && type === "raw" && (
                       <div>
                         <label className="block text-xs font-semibold text-slate-500 mb-1">Stok Awal</label>
                         <input
@@ -542,7 +677,86 @@ export default function IngredientsPage() {
                         />
                       </div>
                     )}
+
+                    {type === "intermediate" && (
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">Yield (Hasil per Batch Resep)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          value={yieldQty}
+                          onChange={(e) => setYieldQty(e.target.value)}
+                          className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500 font-semibold text-orange-600"
+                          placeholder="Misal: 1000 untuk 1kg sambal"
+                          min="0.001"
+                        />
+                      </div>
+                    )}
                   </div>
+
+                  {/* Sub-Recipe Builder */}
+                  {type === "intermediate" && (
+                    <div className="border-t border-slate-200 pt-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Resep Penyusun</h4>
+                        <button
+                          type="button"
+                          onClick={handleAddRecipeRow}
+                          className="px-2.5 py-1 text-[11px] font-semibold bg-orange-50 text-orange-600 border border-orange-200 rounded hover:bg-orange-600 hover:text-white transition-all flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" /> Tambah Bahan
+                        </button>
+                      </div>
+
+                      <div className="space-y-3.5 max-h-56 overflow-y-auto pr-1">
+                        {recipeRows.map((row, idx) => (
+                          <div key={idx} className="flex gap-3 items-center">
+                            <div className="flex-1">
+                              <select
+                                value={row.childIngredientId}
+                                onChange={(e) => handleRecipeChange(idx, "childIngredientId", parseInt(e.target.value))}
+                                className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
+                              >
+                                <option value={0}>Pilih Bahan Penyusun...</option>
+                                {ingredients
+                                  ?.filter((ing: any) => ing.id !== selectedIng?.id && ing.type !== "intermediate") // Prevent circular reference
+                                  ?.map((ing: any) => (
+                                    <option key={ing.id} value={ing.id}>
+                                      {ing.name} ({formatRupiah(ing.price)}/{ing.unit})
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+
+                            <div className="w-32 flex items-center gap-2">
+                              <input
+                                type="number"
+                                step="any"
+                                required
+                                value={row.qty}
+                                onChange={(e) => handleRecipeChange(idx, "qty", e.target.value)}
+                                className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
+                                placeholder="Jumlah"
+                                min="0.001"
+                              />
+                              <span className="text-xs text-slate-500 uppercase tracking-wide w-10 truncate">
+                                {ingredients?.find((i: any) => i.id === row.childIngredientId)?.unit || ""}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveRecipeRow(idx)}
+                              className="p-2 border border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-lg transition-all"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -646,6 +860,59 @@ export default function IngredientsPage() {
                 </>
               )}
 
+              {modalType === "produce" && (
+                <>
+                  <div className="p-3 bg-purple-950/40 border border-purple-900 rounded-lg text-purple-200 text-xs mb-2">
+                    <p className="font-semibold">Stok Saat Ini: {selectedIng?.stock.toFixed(2)} {selectedIng?.unit}</p>
+                    <p className="mt-0.5">Produksi bahan olahan setengah jadi akan otomatis mengurangi stok bahan mentahnya.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Jumlah Produksi ({selectedIng?.unit})</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={actionQty}
+                      onChange={(e) => setActionQty(e.target.value)}
+                      className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
+                      placeholder="Contoh: 1000"
+                      min="0.001"
+                    />
+                  </div>
+                  
+                  {/* Required child materials display */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs mt-3.5 space-y-2">
+                    <h4 className="font-bold text-slate-700">Kebutuhan Bahan Mentah</h4>
+                    {(() => {
+                      const unitsToProduce = parseFloat(actionQty) || 0;
+                      const yieldVal = parseFloat(selectedIng?.yieldQty) || 1;
+                      const multiplierVal = unitsToProduce > 0 ? unitsToProduce / yieldVal : 0;
+                      return (
+                        <div className="space-y-2">
+                          {selectedIng?.recipes?.map((r: any, idx: number) => {
+                            const reqQty = r.qty * multiplierVal;
+                            const ingObj = allIngredients?.find((i: any) => i.id === r.childIngredientId);
+                            const avail = ingObj ? ingObj.stock : 0;
+                            const isShort = avail < reqQty;
+                            return (
+                              <div key={idx} className="flex justify-between items-center text-slate-600">
+                                <span>{r.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-slate-800">{reqQty.toFixed(2)} {r.unit}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isShort ? "bg-rose-100 text-rose-600" : "bg-emerald-100 text-emerald-600"}`}>
+                                    Stok: {avail.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-3 justify-end pt-4">
                 <button
@@ -657,11 +924,11 @@ export default function IngredientsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-600/10 text-sm flex items-center gap-1.5"
+                  disabled={loading || (modalType === "produce" && (isProduceShortage || !actionQty || parseFloat(actionQty) <= 0))}
+                  className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-semibold shadow-lg shadow-indigo-600/10 text-sm flex items-center gap-1.5"
                 >
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Simpan
+                  {modalType === "produce" ? "Produksi Bahan" : "Simpan"}
                 </button>
               </div>
             </form>

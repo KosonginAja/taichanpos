@@ -66,7 +66,7 @@ export async function GET(req: Request) {
       const totalRevenue = sales ? parseFloat(sales.totalRevenue) : 0;
       const totalHpp = sales ? parseFloat(sales.totalHpp) : 0;
       const profitContribution = totalRevenue - totalHpp;
-      const marginPerUnit = qtySold > 0 ? (totalRevenue - totalHpp) / qtySold : (parseFloat(p.sellPrice.toString()) - (p.hppToday ? parseFloat(p.hppToday.toString()) : 0));
+      const marginPerUnit = qtySold > 0 ? (totalRevenue - totalHpp) / qtySold : 0;
 
       resultList.push({
         id: p.id,

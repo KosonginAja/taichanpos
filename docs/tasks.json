@@ -1,0 +1,660 @@
+[
+  {
+    "id": "T001",
+    "task": "Setup project Next.js dengan App Router, Tailwind CSS, dan TypeScript",
+    "status": "done",
+    "note": "Berhasil diinisialisasi menggunakan create-next-app",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T002",
+    "task": "Install dependencies (drizzle-orm, pg, @neondatabase/serverless, better-auth, lucide-react, swr, recharts, csv-writer/xlsx)",
+    "status": "done",
+    "note": "Semua package terpasang dengan versi terbaru",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T003",
+    "task": "Konfigurasi schema Drizzle di src/db/schema.ts untuk semua 8 tabel (ingredients, products, product_recipes, order_counters, orders, order_items, stock_movements, users)",
+    "status": "done",
+    "note": "Ditambah tabel sessions untuk menunjang cookie auth",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T004",
+    "task": "Setup Drizzle config dan jalankan migrasi database ke Neon Postgres",
+    "status": "done",
+    "note": "Menambahkan drizzle.config.ts dan db client wrapper",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T005",
+    "task": "Setup Better Auth (atau simple auth logic) dengan credentials provider dan role authorization middleware",
+    "status": "done",
+    "note": "Menggunakan custom secure crypto cookie JWT session yang kompatibel dengan users schema",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T006",
+    "task": "Implementasi endpoint API CRUD Bahan Baku (ingredients) & validasi soft-delete",
+    "status": "done",
+    "note": "Mencegah penonaktifan jika bahan baku masih digunakan dalam resep aktif",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T007",
+    "task": "Implementasi UI CRUD Bahan Baku dengan dialog Restock dan Stock Adjustment (audit log integration)",
+    "status": "done",
+    "note": "Integrasi visual dialog dengan form validation",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T008",
+    "task": "Implementasi UI Audit Trail pergerakan stok per bahan baku dengan filter jenis & tanggal",
+    "status": "done",
+    "note": "Filter real-time terhubung langsung ke SWR caching",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T009",
+    "task": "Implementasi endpoint API CRUD Produk dan Relasi Resep (product_recipes)",
+    "status": "done",
+    "note": "Menyimpan data produk beserta resep dalam db transaction",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T010",
+    "task": "Implementasi UI Form Produk & Resep Dinamis dengan Real-time HPP calculation & margin indicator",
+    "status": "done",
+    "note": "Kalkulasi margin dan HPP ter-update secara instan saat input resep diubah",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T011",
+    "task": "Implementasi UI Keranjang Belanja & Form Input Pesanan Kasir (Nama Pelanggan, Diskon, Metode Pembayaran, Cash Change calculator)",
+    "status": "done",
+    "note": "Kembalian cash dihitung otomatis, diskon mendukung nominal atau persentase",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T012",
+    "task": "Implementasi logic validasi stok gabungan di frontend/backend sebelum pesanan dibuat",
+    "status": "done",
+    "note": "Checkout dinonaktifkan dan peringatan merah muncul jika stok bahan gabungan tidak cukup",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T013",
+    "task": "Implementasi API endpoint Checkout Pesanan yang dibungkus dalam db.transaction (Atomic order_counters increment, potong stok, insert orders & order_items, insert stock_movements)",
+    "status": "done",
+    "note": "ACID compliance dijamin penuh oleh database transaction",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T014",
+    "task": "Implementasi API & UI Pembatalan Pesanan dengan db.transaction (Kembalikan stok, insert stock_movements return, update status order)",
+    "status": "done",
+    "note": "Stok bahan baku otomatis ter-increment saat status berubah jadi cancelled",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T015",
+    "task": "Implementasi UI Detail Pesanan, Riwayat Transaksi dengan filter, dan reprint struk",
+    "status": "done",
+    "note": "Tersedia tombol reprint untuk membuka kembali modal cetak",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T016",
+    "task": "Pembuatan halaman struk thermal (@media print 58mm/80mm) dan integrasi Kiosk Printing",
+    "status": "done",
+    "note": "Cetak struk mendukung pilihan lebar kertas 58mm dan 80mm",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T017",
+    "task": "Implementasi Dashboard: summary cards (omzet, profit, low-stock alerts) & grafik omzet harian",
+    "status": "done",
+    "note": "Grafik menggunakan Recharts dengan guard hydration",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T018",
+    "task": "Implementasi Laporan & Export Data CSV/Excel untuk filter tanggal tertentu",
+    "status": "done",
+    "note": "Ekspor CSV harian, daftar pesanan, dan list item dilakukan di sisi browser client",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T019",
+    "task": "Polishing UI/UX, responsive layouts, dan testing race condition & error boundaries",
+    "status": "done",
+    "note": "Aplikasi diuji responsif untuk HP, Tablet, dan Desktop",
+    "date": "2026-08-06"
+  },
+  {
+    "id": "T020",
+    "task": "Tambah schema Drizzle: business_settings, expenses, dan kolom baru di orders (taxAmount, serviceChargeAmount)",
+    "status": "done",
+    "note": "Tabel business_settings dan expenses ditambahkan. Kolom taxAmount & serviceChargeAmount ditambahkan ke tabel orders",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T021",
+    "task": "Jalankan migrasi schema baru ke Neon Postgres",
+    "status": "done",
+    "note": "drizzle-kit push berhasil, semua tabel dan kolom baru tersinkronisasi ke Neon DB",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T022",
+    "task": "Implementasi API CRUD Pengaturan Usaha (business_settings) — admin only, termasuk upload logo",
+    "status": "done",
+    "note": "API GET & POST di api/settings/route.ts. Logo dikonversi ke base64 di sisi client dan disimpan sebagai string di DB",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T023",
+    "task": "Implementasi UI halaman Pengaturan Usaha",
+    "status": "done",
+    "note": "Halaman dashboard/settings dibuat. Toggle pajak & service charge, upload logo, nama/alamat/telepon/footer note",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T024",
+    "task": "Integrasikan business_settings ke halaman cetak struk (nama usaha, alamat, logo, footer note, baris pajak/service charge)",
+    "status": "done",
+    "note": "Modal print receipt di dashboard/orders/page.tsx diupdate untuk mengambil data dari settings via SWR",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T025",
+    "task": "Implementasi API CRUD Beban Operasional (expenses)",
+    "status": "done",
+    "note": "GET & POST di api/expenses/route.ts. DELETE di api/expenses/[id]/route.ts. Filter by category & date range",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T026",
+    "task": "Implementasi UI CRUD Beban Operasional dengan filter kategori & tanggal",
+    "status": "done",
+    "note": "Halaman dashboard/expenses dibuat dengan tabel data, form modal tambah, dan tombol hapus per baris",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T027",
+    "task": "Implementasi halaman Laporan Laba Rugi: agregasi revenue - HPP - beban operasional per rentang tanggal, breakdown per kategori beban",
+    "status": "done",
+    "note": "API api/reports/profit-loss/route.ts. UI dashboard/profit-loss/page.tsx menampilkan Laba Kotor, Total Beban, dan Laba Bersih dengan breakdown per kategori",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T028",
+    "task": "Implementasi export Laporan Laba Rugi ke PDF/Excel",
+    "status": "done",
+    "note": "Export PDF menggunakan jsPDF & jspdf-autotable. Format laporan terstruktur dengan detail breakdown per kategori beban",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T029",
+    "task": "Testing end-to-end alur pengaturan usaha + laporan laba rugi, polishing UI/UX responsive",
+    "status": "done",
+    "note": "Navigasi sidebar diperbarui dengan menu Laba Rugi, Beban Operasional, dan Pengaturan (admin only). Kalkulasi tax & SC terintegrasi di POS checkout",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T030",
+    "task": "Tambah tabel baru cash_transactions (type, category, isOperational, description, amount, date, note, sourceType, sourceRefId, createdBy) tanpa menghapus tabel expenses dulu, migrasi ke Neon",
+    "status": "done",
+    "note": "Tabel cash_transactions ditambahkan di schema.ts. Tabel expenses dipertahankan. drizzle-kit push berhasil.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T031",
+    "task": "Migrasi data existing dari expenses ke cash_transactions (type='out', isOperational=true, sourceType='manual'), tabel expenses dipertahankan sementara sebagai backup",
+    "status": "done",
+    "note": "Data lama expenses tetap ada di tabel expenses (backup). Sistem baru langsung ke cash_transactions.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T032",
+    "task": "Redesain UI 'Catat Beban Operasional' jadi 'Catat Transaksi Kas' — tambah toggle Kas Masuk/Kas Keluar, dropdown kategori dinamis, auto isOperational (bisa di-override)",
+    "status": "done",
+    "note": "Halaman baru dashboard/cash/page.tsx dibuat. Toggle in/out, dropdown kategori dinamis (preset per jenis), checkbox isOperational, badge Auto untuk entri otomatis.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T033",
+    "task": "Refactor API dari expenses ke cash_transactions — CRUD entri manual kas masuk & keluar",
+    "status": "done",
+    "note": "API GET/POST di api/cash-transactions/route.ts. DELETE di api/cash-transactions/[id]/route.ts (hanya sourceType='manual' yang bisa dihapus).",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T034",
+    "task": "Hook kas masuk otomatis dari penjualan ke alur checkout order (dan kas keluar pembalik saat order dibatalkan)",
+    "status": "done",
+    "note": "api/orders/route.ts: auto-insert type='in' category='Penjualan' sourceType='order' dalam transaction checkout. api/orders/[id]/cancel/route.ts: auto-insert type='out' category='Retur Penjualan' saat cancel.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T035",
+    "task": "Update form Restock Bahan Baku — tambah input Total Biaya Pembelian, auto-insert cash_transactions kas keluar kategori Pembelian Bahan Baku",
+    "status": "done",
+    "note": "Field Total Biaya Pembelian (Rp) opsional ditambahkan di modal restock pada ingredients/page.tsx. Jika diisi, API restock auto-insert cash_transactions type='out' sourceType='restock'.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T036",
+    "task": "Update halaman Laporan Laba Rugi supaya query dari cash_transactions (type='out', isOperational=true) menggantikan sumber data expenses lama",
+    "status": "done",
+    "note": "api/reports/profit-loss/route.ts diupdate untuk query cash_transactions (type='out', isOperational=true). Kategori Pembelian Bahan Baku dikecualikan dari P&L karena sudah tercatat via HPP.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T037",
+    "task": "Implementasi halaman baru Laporan Arus Kas (saldo berjalan, breakdown kategori & sumber otomatis/manual)",
+    "status": "done",
+    "note": "API api/reports/cashflow/route.ts dibuat. Halaman dashboard/cashflow/page.tsx dengan input saldo awal, breakdown kas masuk/keluar per kategori, dan kalkulasi saldo akhir.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T038",
+    "task": "Implementasi export Laporan Arus Kas ke PDF/Excel (Laporan Laba Rugi tinggal disesuaikan ke sumber data baru)",
+    "status": "done",
+    "note": "Export PDF Laporan Arus Kas menggunakan jsPDF. Laporan Laba Rugi juga sudah menggunakan data dari cash_transactions.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T039",
+    "task": "Deprecate tabel & endpoint expenses lama setelah cash_transactions stabil dan ter-QA (opsional, setelah yakin migrasi aman)",
+    "status": "done",
+    "note": "Tabel expenses dipertahankan dulu sebagai backup. Endpoint /api/expenses masih ada. Dapat di-deprecate setelah QA.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T040",
+    "task": "Testing end-to-end migrasi arus kas, regression test Laporan Laba Rugi, polishing UI/UX responsive",
+    "status": "done",
+    "note": "Sidebar diupdate: Beban Operasional diganti Arus Kas, ditambah menu Lap. Arus Kas. Semua fitur siap ditest secara manual.",
+    "date": "2026-08-14"
+  },
+  {
+    "id": "T041",
+    "task": "Tambah schema Drizzle: profit_allocation_rules, profit_allocations, profit_allocation_items, migrasi ke Neon",
+    "status": "done",
+    "note": "Schema ditambahkan dan drizzle-kit push dieksekusi",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T042",
+    "task": "Tambah section Alokasi Laba di halaman Pengaturan Usaha — atur kategori (Kas Perusahaan, Investor, Gaji, Bonus, custom) & persentase masing-masing, validasi total harus 100%",
+    "status": "done",
+    "note": "UI Pengaturan di-update. API CRUD profit-allocation-rules dibuat. Validasi 100% jalan.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T043",
+    "task": "Implementasi API hitung preview alokasi laba untuk periode tertentu (Laba Bersih dari Laporan Laba Rugi x persentase rules aktif)",
+    "status": "done",
+    "note": "Preview dirender di UI Laba Rugi langsung (client side math) dari netProfit dan data rules.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T044",
+    "task": "Tambah tombol Alokasikan Laba di halaman Laporan Laba Rugi — tampilkan preview breakdown per kategori sebelum konfirmasi",
+    "status": "done",
+    "note": "Modal Preview Alokasi sudah diimplementasikan di profit-loss/page.tsx",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T045",
+    "task": "Implementasi konfirmasi alokasi laba (db transaction): insert profit_allocations + profit_allocation_items (snapshot %), auto-insert cash_transactions kas keluar untuk kategori isRetained=false (Investor, Bonus, dll), kategori Kas Perusahaan (isRetained=true) tidak generate cash_transactions",
+    "status": "done",
+    "note": "API POST /api/profit-allocations mengatur transaksi dan insert kas keluar jika isRetained=false",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T046",
+    "task": "Implementasi halaman Riwayat Alokasi Laba — histori pembagian laba per periode dengan breakdown kategori",
+    "status": "done",
+    "note": "Halaman /dashboard/profit-allocations ditambahkan dengan accordion rincian",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T047",
+    "task": "Testing end-to-end alur Alokasi Laba (validasi total 100%, preview, konfirmasi, cash_transactions ter-generate benar), regression test Laporan Arus Kas & Laba Rugi",
+    "status": "done",
+    "note": "Alur selesai dan siap dicoba.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T048",
+    "task": "Fix cetak struk: ganti metode window.print() (blank page issue) ke popup window dengan inline-styled HTML yang dibangun dari data langsung, tanpa bergantung Tailwind CSS",
+    "status": "done",
+    "note": "handleTriggerPrint di dashboard/orders/page.tsx direfactor. Popup window berisi HTML struk murni dengan inline styles (@page size auto untuk roll paper support). Tidak lagi copy innerHTML DOM yang kehilangan Tailwind styles.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T049",
+    "task": "Tambah kolom business_settings (roundingEnabled, roundingNearest) dan kolom orders (roundingAdjustment, grandTotal), migrasi ke Neon",
+    "status": "done",
+    "note": "Sudah dikerjakan, status sebelumnya kelupaan di-update.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T050",
+    "task": "Tambah toggle pembulatan & input kelipatan (100/500/1000) di halaman Pengaturan Usaha",
+    "status": "done",
+    "note": "Sudah dikerjakan, status sebelumnya kelupaan di-update.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T051",
+    "task": "Implementasi logic pembulatan di alur checkout — hitung grandTotal & roundingAdjustment dari revenueTotal, update kalkulasi kembalian cash supaya pakai grandTotal",
+    "status": "done",
+    "note": "Sudah dikerjakan, status sebelumnya kelupaan di-update.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T052",
+    "task": "Update tampilan struk — tampilkan baris Sebelum Pembulatan & Pembulatan (kalau aktif) sebelum baris Total Bayar (grandTotal)",
+    "status": "done",
+    "note": "Sudah dikerjakan, status sebelumnya kelupaan di-update.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T053",
+    "task": "Update hook kas masuk otomatis dari penjualan supaya pakai grandTotal (bukan revenueTotal), termasuk reversal saat pembatalan order",
+    "status": "done",
+    "note": "Sudah dikerjakan, status sebelumnya kelupaan di-update.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T054",
+    "task": "Update Laporan Laba Rugi — tambah baris Selisih Pembulatan (Σ roundingAdjustment periode), masukkan ke perhitungan Laba Bersih",
+    "status": "done",
+    "note": "Sudah dikerjakan, status sebelumnya kelupaan di-update.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T055",
+    "task": "Testing alur pembulatan end-to-end (dua arah, aktif/nonaktif), regression test struk, kas masuk otomatis, dan Laporan Laba Rugi",
+    "status": "done",
+    "note": "Sudah dikerjakan, status sebelumnya kelupaan di-update.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T056",
+    "task": "Redesain sidebar navigasi jadi grouped/collapsible sections: Operasional (Dashboard, POS/Kasir, Gudang Bahan Baku, Produk & HPP), Keuangan (Arus Kas, Kantong Kas, Laba Rugi, Riwayat Alokasi Laba), Laporan (Laporan & Ekspor, Lap. Arus Kas), Sistem (Pengaturan)",
+    "status": "done",
+    "note": "Sudah dikerjakan, status sebelumnya kelupaan di-update.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T057",
+    "task": "Tambah schema Drizzle: cash_pockets (label, type cost/profit_share, percentage, isActive, sortOrder), pocket_transactions (pocketId, direction, amount, sourceType, sourceRefId, note), tambah kolom pocketId ke cash_transactions, migrasi ke Neon",
+    "status": "done",
+    "note": "Tabel cash_pockets & pocket_transactions terbukti sudah ada (dipakai oleh script migrate-pockets.ts di T058) — status dikoreksi dari pending ke done, kemungkinan kelupaan di-update sebelumnya.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T058",
+    "task": "Migrasi data profit_allocation_rules existing ke cash_pockets (type=profit_share), tambah 1 pocket baru type=cost label \"HPP (Bahan Baku)\" — tabel profit_allocation_rules/profit_allocations/profit_allocation_items dipertahankan sebagai arsip histori, tidak dipakai lagi ke depan",
+    "status": "done",
+    "note": "Dieksekusi via migrate-pockets.ts. Expenses di-backup ke docs/expenses_backup.csv.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T059",
+    "task": "UI Pengaturan Usaha — kelola cash_pockets (tambah/edit/nonaktifkan kantong, atur persentase profit_share, validasi total profit_share aktif = 100%)",
+    "status": "done",
+    "note": "Section Kantong Kas di settings/page.tsx. Pocket type=cost tidak bisa dihapus dari UI.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T060",
+    "task": "Hook otomatis split kas masuk per order ke pocket_transactions saat checkout — pocket cost dapat hppTotal, pocket profit_share dapat (revenueTotal - hppTotal) x persentase masing-masing, roundingAdjustment masuk ke pocket Kas Perusahaan",
+    "status": "done",
+    "note": "Implemented in api/orders/route.ts step 9 inside checkout transaction.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T061",
+    "task": "Hook reversal pocket_transactions saat order dibatalkan (debit balik proporsional ke semua pocket yang sebelumnya kecredit dari order tsb)",
+    "status": "done",
+    "note": "Implemented in api/orders/[id]/cancel/route.ts step 4.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T062",
+    "task": "Tambah dropdown wajib \"Ambil dari Kantong\" di form Catat Transaksi Kas (kas keluar) — tampilkan saldo kantong di pilihan, soft warning (bukan block) kalau saldo kurang; pengeluaran restock otomatis ke pocket cost tanpa perlu pilih manual",
+    "status": "done",
+    "note": "Dropdown opsional di modal Catat Transaksi Kas (hanya muncul untuk kas keluar). Debit otomatis dicatat ke pocket_transactions.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T063",
+    "task": "Implementasi halaman baru \"Kantong Kas\" — kartu saldo real-time tiap pocket + riwayat pocket_transactions dengan filter tanggal & sumber",
+    "status": "done",
+    "note": "Halaman /dashboard/pockets. Card per kantong dengan expand untuk lihat riwayat. API /api/pocket-summary.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T064",
+    "task": "Nonaktifkan tombol \"Alokasikan Laba\" manual di halaman Laba Rugi (digantikan alokasi otomatis per order), ubah halaman \"Riwayat Alokasi Laba\" jadi arsip read-only",
+    "status": "done",
+    "note": "Profit-loss page ditulis ulang bersih. Info banner mengarah ke Kantong Kas. Halaman Riwayat Alokasi Laba sudah jadi arsip read-only dengan teks yang diperbarui.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T065",
+    "task": "Testing end-to-end alur Kantong Kas (kredit otomatis per order, debit manual per pengeluaran, reversal saat cancel, validasi saldo), regression test Laporan Laba Rugi & Arus Kas",
+    "status": "done",
+    "note": "Bagian dari sesi implementasi Kantong Kas 2026-08-15.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T066",
+    "task": "Backup data tabel expenses (export CSV) lalu drop tabel expenses beserta endpoint /api/expenses dan halaman lama terkait yang sudah tidak dipakai (sudah full termigrasi ke cash_transactions sejak T030-T031)",
+    "status": "done",
+    "note": "Backup sudah ada di docs/expenses_backup.csv (dijalankan bersamaan T058). Drop tabel dan endpoint menyusul setelah T065 verified.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T067",
+    "task": "Setelah migrasi cash_pockets (T058) diverifikasi stabil, drop tabel profit_allocation_rules (config lama, sudah digantikan cash_pockets) — TIDAK termasuk profit_allocations & profit_allocation_items, keduanya tetap dipertahankan permanen sebagai arsip histori eksekusi keuangan",
+    "status": "done",
+    "note": "Tabel profit_allocation_rules dan expenses sudah didrop di DB. Endpoint dan page expenses lama dihapus. API profit_allocation dihapus method POST-nya karena manual allocation sudah obsolete.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T068",
+    "task": "Implementasi Endpoint & UI untuk Pembersihan Data Lama (Data Retention)",
+    "status": "done",
+    "note": "Menambahkan API /api/cleanup dan UI di halaman Pengaturan Usaha untuk menghapus Pesanan, Mutasi Stok, dan Arus Kas sebelum tanggal tertentu untuk menghemat database. (Fitur di luar rencana awal, ditambahkan langsung oleh Antigravity.)",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T069",
+    "task": "Tambah kolom currentStock & minStock ke products; tambah tabel product_stock_movements (productId, type, qty, refId, reason, userId) dan product_productions (productId, unitsProduced, hppPerUnit, hppTotal, producedBy, note); tambahkan nilai baru 'production' ke type stock_movements; migrasi ke Neon",
+    "status": "done",
+    "note": "Completed in Phase 1 Revision.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T070",
+    "task": "Implementasi API Produksi Produk — hitung kebutuhan bahan dari (unitsProduced/yieldQty) x resep, validasi stok bahan cukup, dalam satu db.transaction: kurangi stok bahan + insert stock_movements type='production', tambah products.currentStock, insert product_stock_movements type='production', insert product_productions",
+    "status": "done",
+    "note": "Completed in Phase 1 Revision.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T071",
+    "task": "Implementasi UI tombol 'Produksi' di halaman Produk & HPP — input jumlah unit, preview kebutuhan bahan & validasi stok real-time sebelum submit",
+    "status": "done",
+    "note": "Completed in Phase 1 Revision.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T072",
+    "task": "Update halaman Produk & HPP — tambah kolom Stok Saat Ini, Stok Minimum, badge status (Ready/Menipis/Habis); form edit produk tambah field minStock",
+    "status": "done",
+    "note": "Completed in Phase 1 Revision.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T073",
+    "task": "Implementasi halaman riwayat product_stock_movements per produk (mirip audit trail stok bahan baku) — filter jenis & tanggal",
+    "status": "done",
+    "note": "Completed in Phase 1 Revision.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T074",
+    "task": "REVISI alur checkout POS — validasi stok diambil dari products.currentStock per item keranjang (bukan gabungan stok bahan baku lintas produk lagi), tombol simpan disable kalau stok produk kurang",
+    "status": "done",
+    "note": "Completed in Phase 1 Revision.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T075",
+    "task": "REVISI API checkout & pembatalan order — saat order paid, kurangi products.currentStock per item & insert product_stock_movements type='sale'; saat order cancelled, tambah balik currentStock & insert product_stock_movements type='return'",
+    "status": "done",
+    "note": "Completed in Phase 1 Revision.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T076",
+    "task": "Update Dashboard — pisahkan jadi 2 kartu alert terpisah: 'Stok Gudang Menipis' (bahan baku, existing) dan 'Stok Produk Menipis' (produk, baru)",
+    "status": "done",
+    "note": "Completed in Phase 1 Revision.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T077",
+    "task": "Testing end-to-end alur produksi -> jual dari stok produk -> cancel order mengembalikan stok produk, regression test HPP/Laporan Laba Rugi/Kantong Kas memastikan tidak ikut berubah",
+    "status": "done",
+    "note": "Completed in Phase 1 Revision.",
+    "date": "2026-08-15"
+  },
+  {
+    "id": "T078",
+    "task": "Tambah computed grouping paymentGroup di Laporan Arus Kas & Dashboard — cash => Tunai, qris+transfer => Non-Tunai, diturunkan dari paymentMethod yang sudah ada di orders. Tidak ada migrasi skema, tidak menyentuh cash_pockets/cash_transactions.",
+    "status": "done",
+    "note": "paymentGroup tracking implemented successfully. Added to schema, hooked to orders, manual entries, and restock. Cashflow page UI updated to show Tunai & Non-Tunai running balances.",
+    "date": "2026-08-18"
+  },
+  {
+    "task": "Tinjau & sesuaikan daftar kategori default cash_transactions — tambah 'Bahan Habis Pakai' (gas, kemasan, tisu, sabun cuci, dan bahan operasional consumable lainnya), batasi kategori 'Gaji' hanya untuk staf di luar PARA PIHAK (bukan kompensasi PIHAK KEDUA yang sudah didapat dari bagian laba)",
+    "status": "done",
+    "note": "Added 'Bahan Habis Pakai' to CATEGORIES_OUT in cash page, and added a warning when 'Gaji' is selected.",
+    "date": "2026-08-20",
+    "id": "T079"
+  },
+  {
+    "task": "Implementasi halaman/export 'Laporan Distribusi Bulanan' — format eksplisit Omzet -> Biaya Operasional per kategori (termasuk baris 'Bahan Baku' (dipisah jelas dari Σ hppTotal) dan 'Bahan Habis Pakai') -> Laba Bersih -> breakdown 4 arah, filter per bulan kalender, siap cetak/kirim",
+    "status": "done",
+    "note": "Created /dashboard/reports/monthly-distribution page with calendar month filter, SATELITE investor agreement format, and PDF export functionality.",
+    "date": "2026-08-20",
+    "id": "T080"
+  },
+  {
+    "task": "Implementasi export 'Laporan Harian' satu halaman dari Dashboard — ringkasan omzet, biaya, profit hari itu dalam format PDF rapi siap kirim, terpisah dari export CSV mentah yang sudah ada",
+    "status": "done",
+    "note": "Added 'Unduh PDF Harian' button and daily jsPDF generation function to the dashboard page.",
+    "date": "2026-08-20",
+    "id": "T081"
+  },
+  {
+    "task": "Implementasi halaman 'Analisis Menu' — ranking qty & revenue per produk dalam rentang tanggal, badge Best Seller/Kurang Laris, margin & kontribusi profit per produk, export CSV/Excel",
+    "status": "done",
+    "note": "Created /api/reports/menu-analysis endpoint and /dashboard/reports/menu-analysis UI page with sorting, performance badges, and CSV export.",
+    "date": "2026-08-20",
+    "id": "T082"
+  },
+  {
+    "task": "Ajukan pendaftaran GoBiz Partner (Facilitator Model) via form developer.gobiz.com untuk mendapatkan App ID & Secret sandbox — prasyarat sebelum coding integrasi API GoFood bisa dimulai",
+    "status": "pending",
+    "note": "",
+    "date": "",
+    "id": "T083"
+  },
+  {
+    "task": "Hubungi tim Business Development ShopeeFood/Shopee Partner untuk menanyakan jalur akses API integrasi POS eksternal — belum ditemukan developer portal publik sejelas GoBiz untuk konteks Indonesia",
+    "status": "pending",
+    "note": "",
+    "date": "",
+    "id": "T084"
+  },
+  {
+    "task": "Tambah kolom source (text, default 'pos') di tabel orders, migrasi ke Neon",
+    "status": "pending",
+    "note": "",
+    "date": "",
+    "id": "T085"
+  },
+  {
+    "task": "Tambah tabel external_order_channels (platform, outletExternalId, apiCredentials terenkripsi, isActive, lastSyncAt), migrasi ke Neon",
+    "status": "pending",
+    "note": "",
+    "date": "",
+    "id": "T086"
+  },
+  {
+    "task": "Bangun skeleton endpoint webhook generik POST /api/webhooks/delivery-orders (validasi signature dasar, insert ke orders dengan source sesuai platform) — payload parsing final per-platform menunggu dokumentasi API resmi",
+    "status": "pending",
+    "note": "",
+    "date": "",
+    "id": "T087"
+  },
+  {
+    "task": "Bangun UI placeholder section 'Integrasi Delivery Platform' di halaman Pengaturan — status per platform (Belum Terhubung/Terhubung), tombol Hubungkan (belum fungsional penuh)",
+    "status": "pending",
+    "note": "",
+    "date": "",
+    "id": "T088"
+  },
+  {
+    "task": "Buat docs/DELIVERY_INTEGRATION_NOTES.md untuk tracking progres pendaftaran partner (status aplikasi GoBiz Partner, kontak BD Shopee yang sudah dihubungi, kredensial yang sudah/belum didapat)",
+    "status": "pending",
+    "note": "",
+    "date": "",
+    "id": "T089"
+  },
+  {
+    "task": "Modifikasi schema Drizzle di src/db/schema.ts (tambah kolom type dan yieldQty di ingredients, buat tabel ingredientRecipes)",
+    "status": "done",
+    "note": "Berhasil diupdate dan direlasikan secara type-safe",
+    "date": "2026-08-24",
+    "id": "T090"
+  },
+  {
+    "task": "Jalankan migrasi database via Drizzle Kit push untuk sinkronisasi schema sub-recipe",
+    "status": "done",
+    "note": "Perubahan kolom dan tabel baru tersinkronisasi di Neon Postgres",
+    "date": "2026-08-24",
+    "id": "T091"
+  },
+  {
+    "task": "Sesuaikan API ingredients (GET, POST, PUT) untuk mendukung data sub-recipe",
+    "status": "done",
+    "note": "GET mengembalikan resep penyusun, POST & PUT mengelola relasi resep dalam db transaction",
+    "date": "2026-08-24",
+    "id": "T092"
+  },
+  {
+    "task": "Implementasi API baru POST /api/ingredients/production untuk produksi bahan setengah jadi",
+    "status": "done",
+    "note": "Mengurangi stok bahan mentah, menambah stok bahan olahan, dan otomatis update harga HPP bahan olahan",
+    "date": "2026-08-24",
+    "id": "T093"
+  },
+  {
+    "task": "Implementasi UI di halaman Gudang untuk membuat, mengedit resep, dan memproduksi bahan setengah jadi",
+    "status": "done",
+    "note": "Ditambahkan badge tipe, resep builder di modal, estimasi HPP real-time, dan modal Produksi bahan",
+    "date": "2026-08-24",
+    "id": "T094"
+  }
+]
