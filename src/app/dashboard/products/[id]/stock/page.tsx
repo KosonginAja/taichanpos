@@ -32,7 +32,7 @@ export default function ProductStockPage() {
   );
 
   const formatQty = (qty: number) => {
-    return qty % 1 === 0 ? qty.toFixed(0) : qty.toFixed(2);
+    return qty % 1 === 0 ? qty.toFixed(0) : parseFloat(qty.toFixed(3)).toString();
   };
 
   const formatDate = (d: string) => {

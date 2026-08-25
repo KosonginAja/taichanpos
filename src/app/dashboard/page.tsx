@@ -347,7 +347,7 @@ export default function DashboardPage() {
                         ? "bg-rose-950/60 border border-rose-950 text-rose-400"
                         : "bg-amber-950/60 border border-amber-950 text-amber-400"
                     }`}>
-                      {item.stock.toFixed(2)} {item.unit} ({item.status})
+                      {parseFloat(item.stock.toFixed(3))} {item.unit} ({item.status})
                     </span>
                   </div>
                 </div>

@@ -64,8 +64,8 @@ export async function POST(req: Request) {
         const currentStock = parseFloat(recipe.ingredient.stock.toString());
         
         if (currentStock < requiredQty) {
-          const shortage = requiredQty - currentStock;
-          stockErrors.push(`Stok ${recipe.ingredient.name} kurang: butuh ${requiredQty.toFixed(2)} ${recipe.ingredient.unit}, tersedia ${currentStock.toFixed(2)} ${recipe.ingredient.unit}.`);
+          const fmt = (v: number) => parseFloat(v.toFixed(3)).toString();
+          stockErrors.push(`Stok ${recipe.ingredient.name} kurang: butuh ${fmt(requiredQty)} ${recipe.ingredient.unit}, tersedia ${fmt(currentStock)} ${recipe.ingredient.unit}.`);
         } else {
           ingredientUpdates.push({
             ingredientId: recipe.ingredient.id,

@@ -19,6 +19,11 @@ import {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+const formatQty = (val: number | string) => {
+  const num = typeof val === "number" ? val : parseFloat(val);
+  return isNaN(num) ? "0" : parseFloat(num.toFixed(3)).toString();
+};
+
 export default function IngredientsPage() {
   const { data: ingredients, error: ingError, mutate: mutateIng } = useSWR("/api/ingredients", fetcher);
   const { data: movements, error: movError, mutate: mutateMov } = useSWR("/api/ingredients/movements", fetcher);
@@ -357,10 +362,10 @@ export default function IngredientsPage() {
                       </td>
                       <td className="px-6 py-4.5">{formatRupiah(item.price)} / {item.unit}</td>
                       <td className="px-6 py-4.5 font-semibold text-slate-900">
-                        {item.stock.toFixed(2)} <span className="text-xs text-slate-500">{item.unit}</span>
+                        {formatQty(item.stock)} <span className="text-xs text-slate-500">{item.unit}</span>
                       </td>
                       <td className="px-6 py-4.5 text-slate-500">
-                        {item.minStock.toFixed(2)} <span className="text-xs">{item.unit}</span>
+                        {formatQty(item.minStock)} <span className="text-xs">{item.unit}</span>
                       </td>
                       <td className="px-6 py-4.5">
                         <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -545,7 +550,7 @@ export default function IngredientsPage() {
                     </div>
                     <div className="text-right shrink-0">
                       <span className={`font-bold ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>
-                        {isPositive ? "+" : ""}{qtyVal.toFixed(2)} {log.unit}
+                        {isPositive ? "+" : ""}{formatQty(qtyVal)} {log.unit}
                       </span>
                       <p className="text-[9px] text-slate-500 mt-0.5">
                         {new Date(log.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
@@ -828,7 +833,7 @@ export default function IngredientsPage() {
                   <div className="p-3 bg-amber-950/40 border border-amber-900 rounded-lg text-amber-200 text-xs flex gap-2 mb-2">
                     <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold">Stok Saat Ini: {selectedIng?.stock.toFixed(2)} {selectedIng?.unit}</p>
+                      <p className="font-semibold">Stok Saat Ini: {formatQty(selectedIng?.stock)} {selectedIng?.unit}</p>
                       <p className="mt-0.5">Gunakan angka negatif untuk mengurangi stok (misal: -2) dan angka positif untuk menambah/koreksi ke atas.</p>
                     </div>
                   </div>
@@ -863,7 +868,7 @@ export default function IngredientsPage() {
               {modalType === "produce" && (
                 <>
                   <div className="p-3 bg-purple-950/40 border border-purple-900 rounded-lg text-purple-200 text-xs mb-2">
-                    <p className="font-semibold">Stok Saat Ini: {selectedIng?.stock.toFixed(2)} {selectedIng?.unit}</p>
+                    <p className="font-semibold">Stok Saat Ini: {formatQty(selectedIng?.stock)} {selectedIng?.unit}</p>
                     <p className="mt-0.5">Produksi bahan olahan setengah jadi akan otomatis mengurangi stok bahan mentahnya.</p>
                   </div>
                   <div>
@@ -898,9 +903,9 @@ export default function IngredientsPage() {
                               <div key={idx} className="flex justify-between items-center text-slate-600">
                                 <span>{r.name}</span>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-slate-800">{reqQty.toFixed(2)} {r.unit}</span>
+                                  <span className="font-semibold text-slate-800">{formatQty(reqQty)} {r.unit}</span>
                                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isShort ? "bg-rose-100 text-rose-600" : "bg-emerald-100 text-emerald-600"}`}>
-                                    Stok: {avail.toFixed(2)}
+                                    Stok: {formatQty(avail)}
                                   </span>
                                 </div>
                               </div>

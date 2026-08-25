@@ -127,9 +127,9 @@ export default function ProduksiModal({ product, onClose, onSuccess }: ProduksiM
                   <div key={idx} className="flex justify-between items-center text-sm">
                     <span className="text-slate-600">{m.name}</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-800">{m.requiredQty.toFixed(2)} {m.unit}</span>
+                      <span className="font-semibold text-slate-800">{parseFloat(m.requiredQty.toFixed(3))} {m.unit}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${m.isShort ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                        Stok: {m.availableQty.toFixed(2)}
+                        Stok: {parseFloat(m.availableQty.toFixed(3))}
                       </span>
                     </div>
                   </div>

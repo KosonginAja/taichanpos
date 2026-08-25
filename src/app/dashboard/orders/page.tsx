@@ -86,7 +86,8 @@ export default function OrdersPage() {
       if (currentStock < item.qty) {
         isShort = true;
         const shortage = item.qty - currentStock;
-        warnings.push(`Stok kurang untuk ${prod.name}: butuh ${item.qty}, tersedia ${currentStock.toFixed(2)} (kurang ${shortage.toFixed(2)}).`);
+        const fmt = (v: number) => parseFloat(v.toFixed(3)).toString();
+        warnings.push(`Stok kurang untuk ${prod.name}: butuh ${item.qty}, tersedia ${fmt(currentStock)} (kurang ${fmt(shortage)}).`);
       }
     }
 

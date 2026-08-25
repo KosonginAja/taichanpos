@@ -266,7 +266,7 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4.5">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-800">{parseFloat(prod.currentStock).toFixed(2)}</span>
+                        <span className="font-semibold text-slate-800">{parseFloat(parseFloat(prod.currentStock).toFixed(3))}</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                           parseFloat(prod.currentStock) <= 0
                             ? "bg-rose-100 text-rose-600"
