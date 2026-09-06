@@ -740,5 +740,12 @@
     "note": "Memangkas menu usang Riwayat Alokasi Laba dari sidebar, mengganti nama Arus Kas menjadi 'Buku Kas & Pengeluaran' agar jelas bedanya dengan Laporan Arus Kas, memindahkan tabel Persetujuan Akun Staf/Kasir dari halaman Laporan ke Pengaturan Usaha, dan merampingkan navigasi menu laporan.",
     "date": "2026-09-06",
     "id": "T106"
+  },
+  {
+    "task": "Penyederhanaan alur kerja Layar Dapur (KDS) menjadi 1-tap completion untuk operasional solo (kasir & koki tunggal)",
+    "status": "done",
+    "note": "Memangkas tahapan tombol masak berulang (Mulai Masak -> Siap Saji -> Sajikan) menjadi satu tombol cepat 'Pesanan Telah Dibuat' (1-tap served). Menyederhanakan navigasi menjadi 2 tab bersih ('Antrean Masak' & 'Selesai Hari Ini'), mempertahankan checklist item masak per porsi, cetak KOT, dan tombol pemulihan pesanan jika tidak sengaja tertekan.",
+    "date": "2026-09-06",
+    "id": "T107"
   }
 ]

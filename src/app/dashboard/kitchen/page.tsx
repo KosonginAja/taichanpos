@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import {
-  UtensilsCrossed,
   Clock,
   CheckCircle2,
   Flame,
@@ -13,8 +12,6 @@ import {
   RotateCcw,
   ChefHat,
   AlertTriangle,
-  Layers,
-  ArrowRight,
   Check
 } from "lucide-react";
 
@@ -42,7 +39,7 @@ interface Order {
 export default function KitchenDisplayPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"active" | "pending" | "preparing" | "ready" | "served">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "served">("active");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [countdown, setCountdown] = useState(10);
@@ -91,7 +88,7 @@ export default function KitchenDisplayPage() {
         // Sort: pending first, then preparing, then ready, then served (most recent first)
         const activeOrRecent = data.filter((o) => {
           if (o.status === "cancelled") return false;
-          // Show all pending, preparing, ready
+          // Show all active (pending, preparing, ready)
           if (["pending", "preparing", "ready"].includes(o.kitchenStatus || "pending")) return true;
           // If served, only show orders from today
           const orderDate = new Date(o.date);
@@ -103,9 +100,9 @@ export default function KitchenDisplayPage() {
           );
         });
 
-        // Check if there are new orders to trigger chime
+        // Check if there are new active orders to trigger chime
         const activeCount = activeOrRecent.filter(
-          (o) => (o.kitchenStatus || "pending") === "pending"
+          (o) => (o.kitchenStatus || "pending") !== "served"
         ).length;
         if (soundEnabled && prevOrderCountRef.current > 0 && activeCount > prevOrderCountRef.current) {
           playChime();
@@ -249,18 +246,13 @@ export default function KitchenDisplayPage() {
 
   // Filter orders based on active tab
   const filteredOrders = orders.filter((o) => {
-    const kStatus = o.kitchenStatus || "pending";
-    if (activeTab === "active") return ["pending", "preparing", "ready"].includes(kStatus);
-    return kStatus === activeTab;
+    const isServed = (o.kitchenStatus || "pending") === "served";
+    if (activeTab === "active") return !isServed;
+    return isServed;
   });
 
   // Metrics
-  const activeOrders = orders.filter((o) =>
-    ["pending", "preparing", "ready"].includes(o.kitchenStatus || "pending")
-  );
-  const pendingCount = orders.filter((o) => (o.kitchenStatus || "pending") === "pending").length;
-  const preparingCount = orders.filter((o) => o.kitchenStatus === "preparing").length;
-  const readyCount = orders.filter((o) => o.kitchenStatus === "ready").length;
+  const activeOrders = orders.filter((o) => (o.kitchenStatus || "pending") !== "served");
   const servedCount = orders.filter((o) => o.kitchenStatus === "served").length;
 
   const urgentOrdersCount = activeOrders.filter((o) => getElapsedMinutes(o.date) >= 15).length;
@@ -299,9 +291,15 @@ export default function KitchenDisplayPage() {
         {/* Stats Strip */}
         <div className="hidden lg:flex items-center gap-3 text-xs">
           <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl px-3 py-1.5 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-blue-400" />
-            <span className="text-slate-400">Antrean Aktif:</span>
+            <Flame className="w-4 h-4 text-orange-400" />
+            <span className="text-slate-400">Antrean Masak:</span>
             <span className="font-bold text-white text-sm">{activeOrders.length}</span>
+          </div>
+
+          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl px-3 py-1.5 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span className="text-slate-400">Selesai Hari Ini:</span>
+            <span className="font-bold text-white text-sm">{servedCount}</span>
           </div>
 
           <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl px-3 py-1.5 flex items-center gap-2">
@@ -331,7 +329,7 @@ export default function KitchenDisplayPage() {
             className={`p-2 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-colors ${
               soundEnabled
                 ? "bg-emerald-950/40 border-emerald-700/50 text-emerald-400 hover:bg-emerald-900/50"
-                : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
+                : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750"
             }`}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -344,7 +342,7 @@ export default function KitchenDisplayPage() {
             className={`p-2 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-colors ${
               autoRefresh
                 ? "bg-blue-950/40 border-blue-700/50 text-blue-400 hover:bg-blue-900/50"
-                : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
+                : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750"
             }`}
           >
             <RefreshCw className={`w-4 h-4 ${autoRefresh ? "animate-spin" : ""}`} style={{ animationDuration: "6s" }} />
@@ -358,7 +356,7 @@ export default function KitchenDisplayPage() {
               setCountdown(10);
             }}
             disabled={loading}
-            className="p-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-medium text-xs flex items-center gap-1.5 transition-all shadow-md shadow-orange-950/50 active:scale-95 disabled:opacity-50"
+            className="p-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-medium text-xs flex items-center gap-1.5 transition-all shadow-md shadow-orange-950/50 active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Segarkan</span>
@@ -367,17 +365,18 @@ export default function KitchenDisplayPage() {
       </header>
 
       {/* Filter Tabs Navigation */}
-      <div className="bg-slate-900/90 border-b border-slate-800/80 px-4 py-2 shrink-0 flex items-center gap-2 overflow-x-auto">
+      <div className="bg-slate-900/90 border-b border-slate-800/80 px-4 py-2 shrink-0 flex items-center gap-2">
         <button
           onClick={() => setActiveTab("active")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
             activeTab === "active"
               ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
               : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-750"
           }`}
         >
-          <span>Semua Aktif</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+          <Flame className="w-3.5 h-3.5" />
+          <span>Antrean Masak</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
             activeTab === "active" ? "bg-white text-orange-600" : "bg-slate-700 text-slate-300"
           }`}>
             {activeOrders.length}
@@ -385,65 +384,18 @@ export default function KitchenDisplayPage() {
         </button>
 
         <button
-          onClick={() => setActiveTab("pending")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-            activeTab === "pending"
-              ? "bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20"
-              : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-750"
-          }`}
-        >
-          <span>Menunggu (Antre)</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-            activeTab === "pending" ? "bg-slate-950 text-amber-400" : "bg-slate-700 text-slate-300"
-          }`}>
-            {pendingCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("preparing")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-            activeTab === "preparing"
-              ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-              : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-750"
-          }`}
-        >
-          <Flame className="w-3.5 h-3.5 text-blue-300" />
-          <span>Sedang Dimasak</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-            activeTab === "preparing" ? "bg-white text-blue-700" : "bg-slate-700 text-slate-300"
-          }`}>
-            {preparingCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("ready")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-            activeTab === "ready"
+          onClick={() => setActiveTab("served")}
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+            activeTab === "served"
               ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"
               : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-750"
           }`}
         >
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-          <span>Siap Disajikan</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-            activeTab === "ready" ? "bg-white text-emerald-700" : "bg-slate-700 text-slate-300"
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          <span>Selesai Hari Ini</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
+            activeTab === "served" ? "bg-white text-emerald-700" : "bg-slate-700 text-slate-300"
           }`}>
-            {readyCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("served")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-            activeTab === "served"
-              ? "bg-slate-700 text-white"
-              : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-750"
-          }`}
-        >
-          <span>Riwayat Hari Ini (Selesai)</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-slate-700 text-slate-300">
             {servedCount}
           </span>
         </button>
@@ -461,11 +413,13 @@ export default function KitchenDisplayPage() {
             <div className="w-20 h-20 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 mb-4 shadow-inner">
               <ChefHat className="w-10 h-10 text-slate-600" />
             </div>
-            <h3 className="text-lg font-bold text-slate-300">Dapur Bersih!</h3>
+            <h3 className="text-lg font-bold text-slate-300">
+              {activeTab === "active" ? "Dapur Bersih & Santai!" : "Belum Ada Pesanan Selesai"}
+            </h3>
             <p className="text-sm text-slate-400 max-w-sm mt-1">
               {activeTab === "active"
-                ? "Tidak ada antrean pesanan yang perlu dimasak saat ini."
-                : `Tidak ada pesanan dengan status '${activeTab}'.`}
+                ? "Semua pesanan sudah selesai dibuat. Tidak ada antrean yang menunggu saat ini."
+                : "Pesanan yang telah diselesaikan hari ini akan muncul di sini."}
             </p>
           </div>
         ) : (
@@ -576,100 +530,64 @@ export default function KitchenDisplayPage() {
                   </div>
 
                   {/* Card Footer / Status Action Controls */}
-                  <div className="p-3 bg-slate-850/80 border-t border-slate-800 space-y-2">
-                    {/* Status Badge & Undo Action */}
+                  <div className="p-3 bg-slate-850/80 border-t border-slate-800 space-y-2.5">
+                    {/* Status Badge & Quick Undo */}
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-slate-400 text-[11px]">Status Dapur:</span>
-                        <span className={`font-bold capitalize px-2 py-0.5 rounded-full text-[10px] ${
-                          kStatus === "pending"
+                        <span className="text-slate-400 text-[11px]">Status:</span>
+                        <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
+                          kStatus !== "served"
                             ? "bg-amber-950/60 border border-amber-700/60 text-amber-300"
-                            : kStatus === "preparing"
-                            ? "bg-blue-950/60 border border-blue-700/60 text-blue-300"
-                            : kStatus === "ready"
-                            ? "bg-emerald-950/60 border border-emerald-700/60 text-emerald-300"
-                            : "bg-slate-800 text-slate-400"
+                            : "bg-emerald-950/60 border border-emerald-700/60 text-emerald-300"
                         }`}>
-                          {kStatus === "pending" && "Menunggu Antre"}
-                          {kStatus === "preparing" && "Sedang Dimasak"}
-                          {kStatus === "ready" && "Siap Saji"}
-                          {kStatus === "served" && "Selesai Disajikan"}
+                          {kStatus !== "served" ? "⏳ Perlu Dimasak" : "✅ Selesai Dibuat"}
                         </span>
                       </div>
 
-                      {/* Undo status button */}
-                      {kStatus !== "pending" && (
+                      {/* Undo status button if already served */}
+                      {kStatus === "served" && (
                         <button
-                          onClick={() => {
-                            const prev =
-                              kStatus === "served"
-                                ? "ready"
-                                : kStatus === "ready"
-                                ? "preparing"
-                                : "pending";
-                            handleUpdateStatus(order.id, prev);
-                          }}
+                          onClick={() => handleUpdateStatus(order.id, "pending")}
                           disabled={processingId === order.id}
-                          title="Kembalikan ke status sebelumnya"
-                          className="text-slate-500 hover:text-slate-300 p-1 rounded hover:bg-slate-800"
+                          title="Kembalikan ke Antrean Masak"
+                          className="text-slate-400 hover:text-amber-300 p-1 rounded hover:bg-slate-800 flex items-center gap-1 text-[10px] font-semibold cursor-pointer"
                         >
-                          <RotateCcw className="w-3.5 h-3.5" />
+                          <RotateCcw className="w-3 h-3 text-amber-400" />
+                          <span>Batal Selesai</span>
                         </button>
                       )}
                     </div>
 
-                    {/* Primary Progression Action Button */}
+                    {/* Primary 1-Tap Action Button */}
                     <div className="grid grid-cols-4 gap-2">
                       {/* Reprint KOT */}
                       <button
                         onClick={() => handlePrintKot(order)}
                         title="Cetak Ulang Tiket Dapur (KOT)"
-                        className="col-span-1 py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center justify-center transition-colors text-xs font-semibold"
+                        className="col-span-1 py-2.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center justify-center transition-colors text-xs font-semibold cursor-pointer"
                       >
                         <Printer className="w-4 h-4" />
                       </button>
 
-                      {/* Progression button */}
-                      {kStatus === "pending" && (
-                        <button
-                          onClick={() => handleUpdateStatus(order.id, "preparing")}
-                          disabled={processingId === order.id}
-                          className="col-span-3 py-2 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-950 transition-all active:scale-98 disabled:opacity-50"
-                        >
-                          <Flame className="w-4 h-4" />
-                          <span>Mulai Masak</span>
-                          <ArrowRight className="w-3.5 h-3.5 ml-auto" />
-                        </button>
-                      )}
-
-                      {kStatus === "preparing" && (
-                        <button
-                          onClick={() => handleUpdateStatus(order.id, "ready")}
-                          disabled={processingId === order.id}
-                          className="col-span-3 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950 transition-all active:scale-98 disabled:opacity-50"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Siap Saji</span>
-                          <ArrowRight className="w-3.5 h-3.5 ml-auto" />
-                        </button>
-                      )}
-
-                      {kStatus === "ready" && (
+                      {/* 1-Tap Completion or Restore */}
+                      {kStatus !== "served" ? (
                         <button
                           onClick={() => handleUpdateStatus(order.id, "served")}
                           disabled={processingId === order.id}
-                          className="col-span-3 py-2 px-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-98 disabled:opacity-50"
+                          className="col-span-3 py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
-                          <UtensilsCrossed className="w-4 h-4" />
-                          <span>Sajikan (Selesai)</span>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+                          <span>Pesanan Telah Dibuat</span>
                         </button>
-                      )}
-
-                      {kStatus === "served" && (
-                        <div className="col-span-3 py-2 px-3 rounded-xl bg-slate-800/70 border border-slate-700/50 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5">
-                          <Check className="w-4 h-4 text-emerald-400" />
-                          <span>Telah Disajikan</span>
-                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleUpdateStatus(order.id, "pending")}
+                          disabled={processingId === order.id}
+                          className="col-span-3 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Kembalikan ke Antrean</span>
+                        </button>
                       )}
                     </div>
                   </div>
