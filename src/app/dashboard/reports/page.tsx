@@ -11,9 +11,6 @@ import {
   AlertTriangle,
   Loader2,
   CheckCircle,
-  UserCheck,
-  UserX,
-  Users,
 } from "lucide-react";
 import useSWR from "swr";
 
@@ -22,51 +19,6 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function ReportsPage() {
   const { data: userSession } = useSWR("/api/auth/me", fetcher);
   const isAdmin = userSession?.user?.role === "admin";
-  const { data: usersList, mutate: mutateUsers } = useSWR(
-    isAdmin ? "/api/users" : null,
-    fetcher,
-  );
-
-  const [userLoading, setUserLoading] = useState(false);
-
-  const handleApproveUser = async (userId: number) => {
-    setUserLoading(true);
-    setErrorMsg("");
-    setSuccessMsg("");
-    try {
-      const res = await fetch(`/api/users/${userId}/approve`, {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal menyetujui user");
-      setSuccessMsg("Akun berhasil disetujui.");
-      mutateUsers();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Gagal menyetujui user.");
-    } finally {
-      setUserLoading(false);
-    }
-  };
-
-  const handleDeleteUser = async (userId: number, userName: string) => {
-    if (!confirm(`Hapus pendaftaran akun ${userName}?`)) return;
-    setUserLoading(true);
-    setErrorMsg("");
-    setSuccessMsg("");
-    try {
-      const res = await fetch(`/api/users/${userId}/approve`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal menghapus user");
-      setSuccessMsg("Akun berhasil dihapus.");
-      mutateUsers();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Gagal menghapus user.");
-    } finally {
-      setUserLoading(false);
-    }
-  };
 
   const today = new Date().toISOString().split("T")[0];
   const firstDayOfMonth = new Date(
@@ -283,12 +235,12 @@ export default function ReportsPage() {
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-          Laporan & Ekspor Data
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <FileSpreadsheet className="w-6 h-6 text-orange-500" />
+          Pusat Ekspor Data (CSV / PDF)
         </h1>
-        <p className="text-slate-500 mt-1">
-          Ekspor laporan penjualan, analisis HPP, dan profitabilitas usaha
-          makanan
+        <p className="text-slate-500 text-xs mt-1">
+          Unduh rekapitulasi data mentah pesanan, pergerakan stok gudang, dan ringkasan keuangan.
         </p>
       </div>
 
@@ -428,96 +380,6 @@ export default function ReportsPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* User Management Section */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-          <Users className="w-5 h-5 text-orange-500" /> Persetujuan Akun Kasir
-          Baru
-        </h3>
-
-        {!usersList ? (
-          <div className="flex justify-center py-8 text-slate-500 gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Memuat daftar akun...</span>
-          </div>
-        ) : usersList.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 text-sm">
-            Tidak ada pendaftaran akun kasir/admin lain.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="text-xs uppercase tracking-wider text-slate-500 bg-slate-50/40">
-                <tr>
-                  <th className="px-6 py-4 rounded-l-xl">Nama Lengkap</th>
-                  <th className="px-6 py-4">Username</th>
-                  <th className="px-6 py-4">Email</th>
-                  <th className="px-6 py-4">Peran (Role)</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Tanggal Daftar</th>
-                  <th className="px-6 py-4 text-right rounded-r-xl">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {usersList.map((usr: any) => (
-                  <tr
-                    key={usr.id}
-                    className="hover:bg-slate-50/20 transition-all"
-                  >
-                    <td className="px-6 py-4 font-medium text-slate-800">
-                      {usr.name}
-                    </td>
-                    <td className="px-6 py-4 text-slate-500 font-mono text-xs">
-                      @{usr.username}
-                    </td>
-                    <td className="px-6 py-4">{usr.email}</td>
-                    <td className="px-6 py-4 uppercase text-xs">{usr.role}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                          usr.isApproved
-                            ? "bg-emerald-950 border border-emerald-900 text-emerald-400"
-                            : "bg-amber-950 border border-amber-900 text-amber-400"
-                        }`}
-                      >
-                        {usr.isApproved ? "Aktif" : "Menunggu Persetujuan"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
-                      {new Date(usr.createdAt).toLocaleDateString("id-ID", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      {!usr.isApproved && (
-                        <button
-                          onClick={() => handleApproveUser(usr.id)}
-                          disabled={userLoading}
-                          className="px-3 py-1 bg-orange-500 border border-indigo-900 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1"
-                        >
-                          <UserCheck className="w-3.5 h-3.5" />
-                          Setujui
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteUser(usr.id, usr.name)}
-                        disabled={userLoading}
-                        className="px-3 py-1 bg-slate-50 border border-slate-200 hover:bg-rose-950/30 text-rose-450 hover:text-rose-450 rounded-lg text-xs font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1"
-                      >
-                        <UserX className="w-3.5 h-3.5" />
-                        Hapus
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );

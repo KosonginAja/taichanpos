@@ -733,5 +733,12 @@
     "note": "Penyempurnaan Laporan Distribusi Bulanan di /dashboard/reports/monthly-distribution dengan integrasi dinamis kantong kas (stakeholder profit share), rincian penerimaan Tunai vs Non-Tunai/Bank, dan ekspor dokumen PDF resmi bertanda tangan investor & pengelola.",
     "date": "2026-09-06",
     "id": "T105"
+  },
+  {
+    "task": "Penyederhanaan dan pemangkasan fitur redundan/usang untuk kemudahan pengguna",
+    "status": "done",
+    "note": "Memangkas menu usang Riwayat Alokasi Laba dari sidebar, mengganti nama Arus Kas menjadi 'Buku Kas & Pengeluaran' agar jelas bedanya dengan Laporan Arus Kas, memindahkan tabel Persetujuan Akun Staf/Kasir dari halaman Laporan ke Pengaturan Usaha, dan merampingkan navigasi menu laporan.",
+    "date": "2026-09-06",
+    "id": "T106"
   }
 ]

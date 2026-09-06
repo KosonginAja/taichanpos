@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import useSWR from "swr";
-import { Store, Save, Image as ImageIcon, Loader2, CheckCircle, Percent, Plus, Trash2, PieChart, AlertTriangle } from "lucide-react";
+import { Store, Save, Image as ImageIcon, Loader2, CheckCircle, Percent, Plus, Trash2, PieChart, AlertTriangle, Users, UserCheck, UserX } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -10,6 +10,7 @@ export default function SettingsPage() {
   const { data: settings, error, mutate } = useSWR("/api/settings", fetcher);
   const { data: userSession } = useSWR("/api/auth/me", fetcher);
   const { data: pockets, mutate: mutatePockets } = useSWR("/api/cash-pockets", fetcher);
+  const { data: usersList, mutate: mutateUsers } = useSWR("/api/users", fetcher);
 
   const isAdmin = userSession?.user?.role === "admin";
 
@@ -42,6 +43,46 @@ export default function SettingsPage() {
   const [cleanupDate, setCleanupDate] = useState("");
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [cleanupMsg, setCleanupMsg] = useState("");
+
+  // Staff User Management state
+  const [userLoading, setUserLoading] = useState(false);
+  const [userSuccessMsg, setUserSuccessMsg] = useState("");
+  const [userErrorMsg, setUserErrorMsg] = useState("");
+
+  const handleApproveUser = async (userId: number) => {
+    setUserLoading(true);
+    setUserErrorMsg("");
+    setUserSuccessMsg("");
+    try {
+      const res = await fetch(`/api/users/${userId}/approve`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal menyetujui user");
+      setUserSuccessMsg("Akun berhasil disetujui & diaktifkan.");
+      mutateUsers();
+    } catch (err: any) {
+      setUserErrorMsg(err.message || "Gagal menyetujui user.");
+    } finally {
+      setUserLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: number, userName: string) => {
+    if (!confirm(`Hapus pendaftaran akun ${userName}?`)) return;
+    setUserLoading(true);
+    setUserErrorMsg("");
+    setUserSuccessMsg("");
+    try {
+      const res = await fetch(`/api/users/${userId}/approve`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal menghapus user");
+      setUserSuccessMsg("Akun berhasil dihapus.");
+      mutateUsers();
+    } catch (err: any) {
+      setUserErrorMsg(err.message || "Gagal menghapus user.");
+    } finally {
+      setUserLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (settings && !error) {
@@ -344,6 +385,113 @@ export default function SettingsPage() {
           </button>
         </form>
         {pocketMsg && <p className="text-red-400 text-sm">{pocketMsg}</p>}
+      </div>
+
+      {/* ====== STAFF USER MANAGEMENT ====== */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+            <Users className="w-5 h-5 text-orange-500" /> Manajemen & Persetujuan Akun Staf
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Kelola akses akun kasir dan staf. Pengguna yang baru mendaftar wajib disetujui oleh admin sebelum dapat login ke sistem kasir.
+          </p>
+        </div>
+
+        {userSuccessMsg && (
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 shrink-0" />
+            <span>{userSuccessMsg}</span>
+          </div>
+        )}
+
+        {userErrorMsg && (
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{userErrorMsg}</span>
+          </div>
+        )}
+
+        {!usersList ? (
+          <div className="flex justify-center py-8 text-slate-500 gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
+            <span className="text-xs">Memuat daftar akun staf...</span>
+          </div>
+        ) : usersList.length === 0 ? (
+          <div className="text-center py-8 text-slate-500 text-xs">
+            Belum ada pendaftaran akun staf/kasir lain.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-600 border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-2.5 px-3 rounded-l-lg">Nama Lengkap</th>
+                  <th className="py-2.5 px-3">Username</th>
+                  <th className="py-2.5 px-3">Email</th>
+                  <th className="py-2.5 px-3">Peran</th>
+                  <th className="py-2.5 px-3 text-center">Status</th>
+                  <th className="py-2.5 px-3">Tgl Daftar</th>
+                  <th className="py-2.5 px-3 text-right rounded-r-lg">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {usersList.map((usr: any) => (
+                  <tr key={usr.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-2.5 px-3 font-semibold text-slate-800">
+                      {usr.name}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-slate-500">
+                      @{usr.username}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-600">{usr.email}</td>
+                    <td className="py-2.5 px-3 uppercase font-bold text-[10px] text-slate-700">
+                      {usr.role}
+                    </td>
+                    <td className="py-2.5 px-3 text-center">
+                      <span
+                        className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          usr.isApproved
+                            ? "bg-emerald-100 border border-emerald-200 text-emerald-800"
+                            : "bg-amber-100 border border-amber-200 text-amber-800"
+                        }`}
+                      >
+                        {usr.isApproved ? "Aktif" : "Menunggu Persetujuan"}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-400">
+                      {new Date(usr.createdAt).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td className="py-2.5 px-3 text-right space-x-1.5">
+                      {!usr.isApproved && (
+                        <button
+                          onClick={() => handleApproveUser(usr.id)}
+                          disabled={userLoading}
+                          className="px-2.5 py-1 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[11px] font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1 shadow-xs"
+                        >
+                          <UserCheck className="w-3 h-3" />
+                          Setujui
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteUser(usr.id, usr.name)}
+                        disabled={userLoading}
+                        className="px-2 py-1 border border-slate-200 hover:bg-rose-50 text-rose-600 rounded-lg text-[11px] font-semibold transition-all disabled:opacity-50 inline-flex items-center gap-1"
+                      >
+                        <UserX className="w-3 h-3" />
+                        Hapus
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ====== DATA CLEANUP ====== */}

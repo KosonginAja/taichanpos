@@ -55,27 +55,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       label: "Keuangan",
       adminOnly: true,
       items: [
-        { name: "Arus Kas", href: "/dashboard/cash", icon: Wallet },
+        { name: "Buku Kas & Pengeluaran", href: "/dashboard/cash", icon: Wallet },
         { name: "Kantong Kas", href: "/dashboard/pockets", icon: PieChart },
         { name: "Laba Rugi", href: "/dashboard/profit-loss", icon: TrendingUp },
-        { name: "Riwayat Alokasi Laba", href: "/dashboard/profit-allocations", icon: BarChart3 },
       ],
     },
     {
       label: "Laporan",
       adminOnly: true,
       items: [
-        { name: "Laporan & Ekspor", href: "/dashboard/reports", icon: BarChart3 },
-        { name: "Lap. Arus Kas", href: "/dashboard/cashflow", icon: Landmark },
-        { name: "Lap. Distribusi Bulanan", href: "/dashboard/reports/monthly-distribution", icon: Percent },
+        { name: "Lap. Bagi Hasil (Investor)", href: "/dashboard/reports/monthly-distribution", icon: Percent },
+        { name: "Laporan Arus Kas", href: "/dashboard/cashflow", icon: Landmark },
         { name: "Analisis Menu", href: "/dashboard/reports/menu-analysis", icon: LineChart },
+        { name: "Ekspor Data (CSV)", href: "/dashboard/reports", icon: BarChart3 },
       ],
     },
     {
       label: "Sistem",
       adminOnly: true,
       items: [
-        { name: "Pengaturan", href: "/dashboard/settings", icon: Settings },
+        { name: "Pengaturan & Akun Staf", href: "/dashboard/settings", icon: Settings },
       ],
     },
   ];
