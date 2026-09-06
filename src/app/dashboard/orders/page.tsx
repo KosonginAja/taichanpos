@@ -24,6 +24,7 @@ import {
   CreditCard,
   Receipt,
   ShoppingBag,
+  Info,
 } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -82,6 +83,12 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutSuccess, setCheckoutSuccess] = useState("");
+
+  // Cancel order modal state
+  const [cancelModalOrder, setCancelModalOrder] = useState<any>(null);
+  const [cancelIsPrepared, setCancelIsPrepared] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Calculate HPP & required ingredients on the fly for warnings (Hybrid MTO & MTS)
   useEffect(() => {
@@ -315,18 +322,35 @@ export default function OrdersPage() {
     }
   };
 
-  const handleCancelOrder = async (orderId: number, orderNum: string) => {
-    if (!confirm(`Apakah Anda yakin ingin membatalkan transaksi ${orderNum}? Stok bahan baku akan dikembalikan.`)) return;
+  const handleCancelOrder = (order: any) => {
+    setCancelModalOrder(order);
+    setCancelIsPrepared(false);
+    setCancelReason("");
+  };
+
+  const executeCancelOrder = async () => {
+    if (!cancelModalOrder) return;
+    setIsCancelling(true);
     try {
-      const res = await fetch(`/api/orders/${orderId}/cancel`, { method: "POST" });
+      const res = await fetch(`/api/orders/${cancelModalOrder.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isPrepared: cancelIsPrepared,
+          cancelReason: cancelReason,
+        }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal membatalkan.");
-      alert(`Pesanan ${orderNum} telah dibatalkan.`);
+      alert(data.message || `Pesanan ${cancelModalOrder.orderNumber} telah dibatalkan.`);
+      setCancelModalOrder(null);
       mutateOrders();
       mutateIng();
       mutateProd();
     } catch (err: any) {
       alert(err.message || "Gagal membatalkan.");
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -996,7 +1020,7 @@ export default function OrdersPage() {
                       </div>
 
                       <button
-                        onClick={() => handleCancelOrder(order.id, order.orderNumber)}
+                        onClick={() => handleCancelOrder(order)}
                         className="w-full mt-2 py-1.5 text-[11px] text-rose-500 hover:text-rose-700 hover:underline text-center"
                       >
                         Batalkan Pesanan Ini
@@ -1122,11 +1146,11 @@ export default function OrdersPage() {
                         >
                           <Printer className="w-3.5 h-3.5" /> Cetak
                         </button>
-                        {order.status === "paid" && (
+                        {order.status !== "cancelled" && (
                           <button
-                            onClick={() => handleCancelOrder(order.id, order.orderNumber)}
+                            onClick={() => handleCancelOrder(order)}
                             className="px-2 py-1.5 bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-lg transition-all inline-flex items-center gap-1.5 text-xs font-medium shadow-sm"
-                            title="Batalkan & Kembalikan Stok"
+                            title="Batalkan Pesanan"
                           >
                             <X className="w-3.5 h-3.5" /> Batal
                           </button>
@@ -1448,6 +1472,137 @@ export default function OrdersPage() {
                 className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-md text-sm transition-all"
               >
                 <Printer className="w-4 h-4" /> Cetak {printMode === "kot" ? "KOT" : "Struk"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CANCEL ORDER MODAL (STANDAR INDUSTRI: PILIH RETUR STOK ATAU CATAT WASTE) */}
+      {cancelModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs no-print">
+          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-rose-500" />
+                  Batalkan Pesanan: {cancelModalOrder.orderNumber}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {cancelModalOrder.tableNo || "Takeaway"} &bull; {cancelModalOrder.customerName || "Pelanggan"}
+                </p>
+              </div>
+              <button
+                onClick={() => setCancelModalOrder(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Status alert */}
+            <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+              cancelModalOrder.status === "paid"
+                ? "bg-amber-50 border border-amber-200 text-amber-800"
+                : "bg-blue-50 border border-blue-200 text-blue-800"
+            }`}>
+              <Info className="w-4 h-4 shrink-0" />
+              <span>
+                {cancelModalOrder.status === "paid"
+                  ? "Pesanan telah lunas. Pembatalan akan otomatis mencatat arus kas keluar (retur penjualan) & mengembalikan split kantong kas."
+                  : "Pesanan berstatus Open Bill (belum dibayar). Pembatalan tidak memengaruhi arus kas."}
+              </span>
+            </div>
+
+            {/* Preparation status decision */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Bagaimana Status Makanan di Dapur?
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCancelIsPrepared(false)}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    !cancelIsPrepared
+                      ? "border-orange-500 bg-orange-50/50 ring-2 ring-orange-500/20"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <RotateCcw className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-slate-900">Belum Dimasak</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-tight">
+                    Stok bahan baku & produk akan <b>dikembalikan utuh</b> ke gudang persediaan.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCancelIsPrepared(true)}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    cancelIsPrepared
+                      ? "border-rose-500 bg-rose-50/50 ring-2 ring-rose-500/20"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Trash2 className="w-4 h-4 text-rose-600" />
+                    <span className="text-xs font-bold text-slate-900">Sudah Dimasak</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-tight">
+                    Makanan terbuang/hangus. Stok gudang <b>TIDAK</b> kembali, otomatis dicatat ke <b>Limbah / Waste</b>.
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Reason input */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Alasan Pembatalan (Opsional)
+              </label>
+              <input
+                type="text"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Contoh: Pelanggan buru-buru, salah input menu..."
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+              />
+
+              {/* Quick Reason Chips */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {["Pelanggan Batal", "Salah Input", "Terlalu Lama", "Komplain Kualitas"].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => setCancelReason(chip)}
+                    className="px-2 py-0.5 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[10px] text-slate-600 font-medium transition-colors"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-3 border-t border-slate-100 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelModalOrder(null)}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors"
+              >
+                Tutup
+              </button>
+              <button
+                type="button"
+                onClick={executeCancelOrder}
+                disabled={isCancelling}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md shadow-rose-950/20 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isCancelling && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>Konfirmasi Batalkan</span>
               </button>
             </div>
           </div>

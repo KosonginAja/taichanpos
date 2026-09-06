@@ -719,5 +719,12 @@
     "note": "Type safety check lolos tanpa error (npx tsc --noEmit), siklus pesanan open bill, kitchen display system (KDS), stock opname, AVCO restock, dan waste tracking terintegrasi penuh tanpa merusak alur kas dan laba rugi.",
     "date": "2026-09-06",
     "id": "T103"
+  },
+  {
+    "task": "Penyempurnaan alur pembatalan pesanan kasir: Non-destructive void dengan opsi retur stok vs pencatatan kerugian limbah (waste) otomatis",
+    "status": "done",
+    "note": "Modal pembatalan interaktif di kasir untuk memilih apakah makanan belum dimasak (stok gudang kembali utuh) atau sudah terlanjur dimasak (stok tidak kembali & otomatis dicatat sebagai kerugian waste). Data pesanan dipertahankan dengan status 'cancelled' untuk integritas audit trail.",
+    "date": "2026-09-06",
+    "id": "T104"
   }
 ]
