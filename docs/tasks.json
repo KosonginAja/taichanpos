@@ -656,5 +656,68 @@
     "note": "Ditambahkan badge tipe, resep builder di modal, estimasi HPP real-time, dan modal Produksi bahan",
     "date": "2026-08-24",
     "id": "T094"
+  },
+  {
+    "task": "Tambah skema Drizzle untuk modernisasi inventory F&B: fulfillmentType di products, tabel waste_logs, stock_opname_sessions, stock_opname_items, dan kolom orderType, tableNo, status 'open' di orders",
+    "status": "done",
+    "note": "Mempersiapkan struktur data untuk Make-to-Order, Dine-in/Meja, Waste, dan Stock Opname",
+    "date": "2026-09-06",
+    "id": "T095"
+  },
+  {
+    "task": "Migrasi schema baru ke database Neon Postgres via drizzle-kit push",
+    "status": "done",
+    "note": "Migrasi berhasil diterapkan ke Neon Postgres via drizzle-kit push",
+    "date": "2026-09-06",
+    "id": "T096"
+  },
+  {
+    "task": "Implementasi pemotongan stok otomatis Make-to-Order (MTO) langsung ke bahan baku saat checkout POS",
+    "status": "done",
+    "note": "Mendukung MTO (potong bahan baku langsung) & MTS (potong produk jadi) secara hybrid, serta pembatalan retur stok yang sesuai",
+    "date": "2026-09-06",
+    "id": "T097"
+  },
+  {
+    "task": "Implementasi kalkulasi persediaan Moving Weighted Average Cost (AVCO) saat restock bahan baku",
+    "status": "done",
+    "note": "Menghitung rata-rata tertimbang harga bahan baku saat restock dengan biaya beli baru",
+    "date": "2026-09-06",
+    "id": "T098"
+  },
+  {
+    "task": "Implementasi API & UI Pencatatan Waste & Spoilage bahan baku dengan estimasi kerugian nominal (Rp)",
+    "status": "done",
+    "note": "API /api/waste dan halaman dashboard /dashboard/ingredients/waste untuk pelacakan kerugian bahan rusak/basi/gosong",
+    "date": "2026-09-06",
+    "id": "T099"
+  },
+  {
+    "task": "Implementasi siklus pesanan kasir: Open Bill / Simpan Pesanan Meja (Dine-in vs Takeaway) dan cetak Kitchen Order Ticket (KOT)",
+    "status": "done",
+    "note": "Mendukung alur open bill makan dulu bayar belakangan, pemilihan meja, pelunasan cepat di tab pesanan aktif, dan cetak tiket dapur (KOT) tanpa harga",
+    "date": "2026-09-06",
+    "id": "T100"
+  },
+  {
+    "task": "Implementasi Kitchen Display Screen (KDS) di /dashboard/kitchen untuk antrean pesanan dapur & timer",
+    "status": "done",
+    "note": "Layar monitor dapur interaktif di /dashboard/kitchen dengan live order polling, audio chime alert, timer tunggu bertingkat (hijau/kuning/merah), checklist item, reprint KOT, dan status progression (pending -> cooking -> ready -> served)",
+    "date": "2026-09-06",
+    "id": "T101"
+  },
+  {
+    "task": "Implementasi lembar kerja Stock Opname fisik dan rekonsiliasi selisih stok (variance) otomatis",
+    "status": "done",
+    "note": "API /api/ingredients/opname & UI lembar kerja di /dashboard/ingredients/opname dengan auto copy sistem, kalkulasi varians dan nominal kerugian riil (Rp), draf audit, dan 1-click batch stock reconciliation",
+    "date": "2026-09-06",
+    "id": "T102"
+  },
+  {
+    "task": "Testing end-to-end alur F&B standar industri, type safety check, dan polishing UI",
+    "status": "done",
+    "note": "Type safety check lolos tanpa error (npx tsc --noEmit), siklus pesanan open bill, kitchen display system (KDS), stock opname, AVCO restock, dan waste tracking terintegrasi penuh tanpa merusak alur kas dan laba rugi.",
+    "date": "2026-09-06",
+    "id": "T103"
   }
 ]

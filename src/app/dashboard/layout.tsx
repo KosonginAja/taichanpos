@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Database, Coffee, ShoppingBag, BarChart3, LogOut, User, Menu, X, Settings, Wallet, Landmark, TrendingUp, PieChart, LineChart, Percent } from "lucide-react";
+import { Home, Database, Coffee, ShoppingBag, BarChart3, LogOut, User, Menu, X, Settings, Wallet, Landmark, TrendingUp, PieChart, LineChart, Percent, ChefHat } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -46,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       items: [
         { name: "Dashboard", href: "/dashboard", icon: Home },
         { name: "POS / Kasir", href: "/dashboard/orders", icon: ShoppingBag },
+        { name: "Layar Dapur (KDS)", href: "/dashboard/kitchen", icon: ChefHat },
         { name: "Gudang Bahan Baku", href: "/dashboard/ingredients", icon: Database },
         { name: "Produk & HPP", href: "/dashboard/products", icon: Coffee },
       ],

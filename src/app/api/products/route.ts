@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
     }
 
-    const { name, sellPrice, yieldQty, isActive, minStock, recipes } = await req.json();
+    const { name, sellPrice, yieldQty, isActive, minStock, fulfillmentType, recipes } = await req.json();
 
     if (!name || sellPrice === undefined || yieldQty === undefined || !recipes || !Array.isArray(recipes)) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -109,6 +109,8 @@ export async function POST(req: Request) {
           name,
           sellPrice: sellPrice.toString(),
           yieldQty: yieldQty.toString(),
+          minStock: minStock !== undefined ? minStock.toString() : "0",
+          fulfillmentType: fulfillmentType || "make_to_order",
         })
         .returning();
 

@@ -28,14 +28,29 @@ export async function POST(req: Request) {
       }
 
       const currentStock = parseFloat(ing.stock.toString());
+      const currentPrice = parseFloat(ing.price.toString());
       const addedQty = parseFloat(qty);
       const newStock = currentStock + addedQty;
 
-      // Update stock
+      // Calculate Weighted Average Costing (AVCO) if purchaseCost is provided
+      let newUnitPrice = currentPrice;
+      const totalPurchaseCost = purchaseCost ? parseFloat(purchaseCost) : 0;
+      if (totalPurchaseCost > 0 && addedQty > 0) {
+        const positiveCurrentStock = Math.max(0, currentStock);
+        const currentStockValue = positiveCurrentStock * currentPrice;
+        const totalValue = currentStockValue + totalPurchaseCost;
+        const totalEffectiveQty = positiveCurrentStock + addedQty;
+        if (totalEffectiveQty > 0) {
+          newUnitPrice = totalValue / totalEffectiveQty;
+        }
+      }
+
+      // Update stock and unit price (AVCO)
       const [updated] = await tx
         .update(ingredients)
         .set({
           stock: newStock.toString(),
+          price: newUnitPrice.toFixed(2),
           updatedAt: new Date(),
         })
         .where(eq(ingredients.id, ingredientId))

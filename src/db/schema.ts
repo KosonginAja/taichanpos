@@ -56,6 +56,7 @@ export const products = pgTable("products", {
   yieldQty: numeric("yield_qty", { precision: 12, scale: 3 }).notNull(), // batch yield quantity
   currentStock: numeric("current_stock", { precision: 12, scale: 3 }).notNull().default("0"),
   minStock: numeric("min_stock", { precision: 12, scale: 3 }).notNull().default("0"),
+  fulfillmentType: text("fulfillment_type").notNull().default("make_to_order"), // "make_to_order" | "make_to_stock"
   isActive: boolean("is_active").notNull().default(true), // soft-delete
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -80,6 +81,8 @@ export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(), // INV-YYYYMMDD-seq
   date: timestamp("date").notNull().defaultNow(),
+  orderType: text("order_type").notNull().default("dine_in"), // "dine_in" | "takeaway" | "delivery"
+  tableNo: text("table_no"), // "Meja 01", "Takeaway #05", etc.
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
   discount: numeric("discount", { precision: 12, scale: 2 }).notNull().default("0"),
   taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }).notNull().default("0"),
@@ -93,7 +96,8 @@ export const orders = pgTable("orders", {
   amountReceived: numeric("amount_received", { precision: 12, scale: 2 }), // khusus cash
   changeAmount: numeric("change_amount", { precision: 12, scale: 2 }), // khusus cash
   customerName: text("customer_name"),
-  status: text("status").notNull().default("paid"), // paid / cancelled
+  status: text("status").notNull().default("paid"), // open (dine-in tab) | paid | cancelled
+  kitchenStatus: text("kitchen_status").notNull().default("pending"), // pending | preparing | ready | served
   cashierId: integer("cashier_id").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -325,3 +329,79 @@ export const pocketTransactionsRelations = relations(pocketTransactions, ({ one 
     references: [cashPockets.id],
   }),
 }));
+
+// 18. Waste & Spoilage Logs (Bahan/Makanan Rusak & Basi)
+export const wasteLogs = pgTable("waste_logs", {
+  id: serial("id").primaryKey(),
+  ingredientId: integer("ingredient_id").references(() => ingredients.id),
+  productId: integer("product_id").references(() => products.id),
+  itemName: text("item_name").notNull(),
+  qty: numeric("qty", { precision: 12, scale: 3 }).notNull(),
+  unit: text("unit").notNull(),
+  costPerUnit: numeric("cost_per_unit", { precision: 12, scale: 2 }).notNull(),
+  totalLoss: numeric("total_loss", { precision: 12, scale: 2 }).notNull(),
+  reason: text("reason").notNull(), // 'expired' | 'spoiled' | 'burnt' | 'dropped' | 'portion_error' | 'other'
+  note: text("note"),
+  loggedBy: integer("logged_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const wasteLogsRelations = relations(wasteLogs, ({ one }) => ({
+  ingredient: one(ingredients, {
+    fields: [wasteLogs.ingredientId],
+    references: [ingredients.id],
+  }),
+  product: one(products, {
+    fields: [wasteLogs.productId],
+    references: [products.id],
+  }),
+  user: one(users, {
+    fields: [wasteLogs.loggedBy],
+    references: [users.id],
+  }),
+}));
+
+// 19. Stock Opname Sessions (Audit Fisik Berkala)
+export const stockOpnameSessions = pgTable("stock_opname_sessions", {
+  id: serial("id").primaryKey(),
+  sessionNumber: text("session_number").notNull().unique(), // OPN-YYYYMMDD-seq
+  notes: text("notes"),
+  status: text("status").notNull().default("draft"), // 'draft' | 'applied'
+  totalDiscrepancyCost: numeric("total_discrepancy_cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  conductedBy: integer("conducted_by").references(() => users.id),
+  appliedAt: timestamp("applied_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// 20. Stock Opname Items
+export const stockOpnameItems = pgTable("stock_opname_items", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => stockOpnameSessions.id, { onDelete: "cascade" }),
+  ingredientId: integer("ingredient_id").notNull().references(() => ingredients.id),
+  systemStock: numeric("system_stock", { precision: 12, scale: 3 }).notNull(),
+  physicalStock: numeric("physical_stock", { precision: 12, scale: 3 }).notNull(),
+  differenceQty: numeric("difference_qty", { precision: 12, scale: 3 }).notNull(), // physical - system
+  unitCost: numeric("unit_cost", { precision: 12, scale: 2 }).notNull(),
+  discrepancyCost: numeric("discrepancy_cost", { precision: 12, scale: 2 }).notNull(), // differenceQty * unitCost
+  note: text("note"),
+});
+
+export const stockOpnameSessionsRelations = relations(stockOpnameSessions, ({ one, many }) => ({
+  items: many(stockOpnameItems),
+  user: one(users, {
+    fields: [stockOpnameSessions.conductedBy],
+    references: [users.id],
+  }),
+}));
+
+export const stockOpnameItemsRelations = relations(stockOpnameItems, ({ one }) => ({
+  session: one(stockOpnameSessions, {
+    fields: [stockOpnameItems.sessionId],
+    references: [stockOpnameSessions.id],
+  }),
+  ingredient: one(ingredients, {
+    fields: [stockOpnameItems.ingredientId],
+    references: [ingredients.id],
+  }),
+}));
+

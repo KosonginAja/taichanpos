@@ -33,7 +33,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         .from(orderItems)
         .where(eq(orderItems.orderId, orderId));
 
-      // 2. For each item, return product stock
+      // 2. For each item, return stock (MTS to products, MTO to ingredients)
       for (const item of items) {
         if (!item.productId) continue; // Skip if no product ID
 
@@ -44,59 +44,97 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!prod) continue; // Skip if product completely deleted from DB
 
         const orderQtyVal = parseFloat(item.qty.toString());
-        const currentStock = parseFloat(prod.currentStock.toString());
-        const newStock = currentStock + orderQtyVal;
+        const isMakeToOrder = (prod.fulfillmentType || "make_to_order") === "make_to_order";
 
-        // Update products stock
-        await tx
-          .update(products)
-          .set({
-            currentStock: newStock.toString(),
-            updatedAt: new Date(),
-          })
-          .where(eq(products.id, item.productId));
+        if (!isMakeToOrder) {
+          const currentStock = parseFloat(prod.currentStock.toString());
+          const newStock = currentStock + orderQtyVal;
 
-        // Log product stock movement return (positive quantity)
-        await tx.insert(productStockMovements).values({
-          productId: item.productId,
-          type: "return",
-          qty: orderQtyVal.toString(),
-          refId: `CANCEL-${order.orderNumber}`,
-          userId: session.id,
-        });
+          // Update products stock
+          await tx
+            .update(products)
+            .set({
+              currentStock: newStock.toString(),
+              updatedAt: new Date(),
+            })
+            .where(eq(products.id, item.productId));
+
+          // Log product stock movement return (positive quantity)
+          await tx.insert(productStockMovements).values({
+            productId: item.productId,
+            type: "return",
+            qty: orderQtyVal.toString(),
+            refId: `CANCEL-${order.orderNumber}`,
+            userId: session.id,
+          });
+        } else {
+          // Return raw ingredients for MTO product
+          const recipes = await tx
+            .select({
+              ingredientId: productRecipes.ingredientId,
+              qty: productRecipes.qty,
+              stock: ingredients.stock,
+            })
+            .from(productRecipes)
+            .innerJoin(ingredients, eq(productRecipes.ingredientId, ingredients.id))
+            .where(eq(productRecipes.productId, prod.id));
+
+          const yieldQty = parseFloat(prod.yieldQty.toString()) || 1;
+          for (const r of recipes) {
+            const returnIngQty = (parseFloat(r.qty.toString()) / yieldQty) * orderQtyVal;
+            const currentIngStock = parseFloat(r.stock.toString());
+            await tx
+              .update(ingredients)
+              .set({
+                stock: (currentIngStock + returnIngQty).toString(),
+                updatedAt: new Date(),
+              })
+              .where(eq(ingredients.id, r.ingredientId));
+
+            await tx.insert(stockMovements).values({
+              ingredientId: r.ingredientId,
+              type: "return",
+              qty: returnIngQty.toString(),
+              refId: `CANCEL-${order.orderNumber}`,
+              reason: `Retur pembatalan pesanan MTO ${order.orderNumber}`,
+              userId: session.id,
+            });
+          }
+        }
       }
 
-      // 3. Insert pembalik kas (retur penjualan) ke cash_transactions
-      await tx.insert(cashTransactions).values({
-        type: "out",
-        category: "Retur Penjualan",
-        isOperational: false,
-        description: `Pembatalan Order ${order.orderNumber}`,
-        amount: (parseFloat(order.grandTotal?.toString() || "0") > 0 ? order.grandTotal : order.revenueTotal).toString(),
-        date: new Date(),
-        sourceType: "order",
-        sourceRefId: order.orderNumber,
-        paymentGroup: order.paymentMethod === "cash" ? "tunai" : "non_tunai",
-        createdBy: session.id,
-      });
+      // 3. Insert pembalik kas & pockets ONLY if order was already paid
+      if (order.status === "paid") {
+        await tx.insert(cashTransactions).values({
+          type: "out",
+          category: "Retur Penjualan",
+          isOperational: false,
+          description: `Pembatalan Order ${order.orderNumber}`,
+          amount: (parseFloat(order.grandTotal?.toString() || "0") > 0 ? order.grandTotal : order.revenueTotal).toString(),
+          date: new Date(),
+          sourceType: "order",
+          sourceRefId: order.orderNumber,
+          paymentGroup: order.paymentMethod === "cash" ? "tunai" : "non_tunai",
+          createdBy: session.id,
+        });
 
-      // 4. Reverse pocket_transactions dari order ini
-      const prevPocketTxs = await tx
-        .select()
-        .from(pocketTransactions)
-        .where(eq(pocketTransactions.sourceRefId, order.orderNumber));
+        // 4. Reverse pocket_transactions dari order ini
+        const prevPocketTxs = await tx
+          .select()
+          .from(pocketTransactions)
+          .where(eq(pocketTransactions.sourceRefId, order.orderNumber));
 
-      for (const ptx of prevPocketTxs) {
-        // Only reverse credits (money that came in from the order)
-        if (ptx.direction === 'credit') {
-          await tx.insert(pocketTransactions).values({
-            pocketId: ptx.pocketId,
-            direction: 'debit',
-            amount: ptx.amount,
-            sourceType: 'order',
-            sourceRefId: `CANCEL-${order.orderNumber}`,
-            note: `Reversal pembatalan Order ${order.orderNumber}`,
-          });
+        for (const ptx of prevPocketTxs) {
+          if (ptx.direction === 'credit') {
+            await tx.insert(pocketTransactions).values({
+              pocketId: ptx.pocketId,
+              direction: 'debit',
+              amount: ptx.amount,
+              sourceType: 'order',
+              sourceRefId: `CANCEL-${order.orderNumber}`,
+              note: `Reversal pembatalan Order ${order.orderNumber}`,
+            });
+          }
         }
       }
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import Link from "next/link";
 import {
   Plus,
   Edit2,
@@ -14,6 +15,7 @@ import {
   Loader2,
   CheckCircle,
   HelpCircle,
+  ClipboardCheck,
   X,
 } from "lucide-react";
 
@@ -304,15 +306,31 @@ export default function IngredientsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Gudang Bahan Baku</h1>
           <p className="text-slate-500 mt-1">Kelola stok bahan, restock, penyesuaian, dan riwayat pergerakan</p>
         </div>
-        {isAdmin && (
-          <button
-            onClick={() => handleOpenModal("create")}
-            className="self-start flex items-center gap-2 px-5 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-600/20 active:scale-[0.98] transition-all text-sm"
+        <div className="flex flex-wrap items-center gap-2.5 self-start">
+          <Link
+            href="/dashboard/ingredients/waste"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-semibold transition-all text-xs"
           >
-            <Plus className="w-4 h-4" />
-            Tambah Bahan Baku
-          </button>
-        )}
+            <Trash2 className="w-4 h-4 text-rose-500" />
+            Catat Waste
+          </Link>
+          <Link
+            href="/dashboard/ingredients/opname"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-semibold transition-all text-xs"
+          >
+            <ClipboardCheck className="w-4 h-4 text-blue-500" />
+            Stock Opname
+          </Link>
+          {isAdmin && (
+            <button
+              onClick={() => handleOpenModal("create")}
+              className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold shadow-md active:scale-[0.98] transition-all text-xs"
+            >
+              <Plus className="w-4 h-4" />
+              Tambah Bahan
+            </button>
+          )}
+        </div>
       </div>
 
       {successMsg && !modalType && (

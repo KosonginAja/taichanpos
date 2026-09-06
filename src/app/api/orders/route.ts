@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { orders, orderItems, orderCounters, products, productRecipes, ingredients, cashTransactions, businessSettings, cashPockets, pocketTransactions, productStockMovements } from "@/db/schema";
+import { orders, orderItems, orderCounters, products, productRecipes, ingredients, stockMovements, cashTransactions, businessSettings, cashPockets, pocketTransactions, productStockMovements } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 
@@ -82,10 +82,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { items, discount, paymentMethod, amountReceived, customerName, taxAmount, serviceChargeAmount } = await req.json();
+    const {
+      items,
+      discount,
+      paymentMethod,
+      amountReceived,
+      customerName,
+      taxAmount,
+      serviceChargeAmount,
+      orderType,
+      tableNo,
+      status: orderStatusInput,
+    } = await req.json();
 
-    if (!items || !Array.isArray(items) || items.length === 0 || !paymentMethod) {
-      return NextResponse.json({ error: "Keranjang kosong atau metode pembayaran tidak valid." }, { status: 400 });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Keranjang pesanan kosong." }, { status: 400 });
+    }
+
+    const isPaid = (orderStatusInput || "paid") === "paid";
+    if (isPaid && !paymentMethod) {
+      return NextResponse.json({ error: "Metode pembayaran harus dipilih untuk pesanan langsung bayar." }, { status: 400 });
     }
 
     const discountVal = parseFloat(discount || 0);
@@ -95,9 +111,10 @@ export async function POST(req: Request) {
 
     // Checkout transaction
     const finalOrder = await db.transaction(async (tx) => {
-      // 1. Gather HPP per product and validate product stock
+      // 1. Gather HPP per product and validate stock (Hybrid MTO vs MTS)
       const productHpps: { [prodId: number]: number } = {};
       const updatedProducts: { id: number; newStock: number; qty: number }[] = [];
+      const requiredIngredientsMap: { [ingId: number]: { id: number; name: string; unit: string; requiredQty: number; currentStock: number } } = {};
       const stockErrors: string[] = [];
 
       for (const item of items) {
@@ -109,21 +126,16 @@ export async function POST(req: Request) {
           throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan atau sudah tidak aktif.`);
         }
 
-        // Validate product stock
-        const currentStock = parseFloat(prod.currentStock.toString());
         const orderQty = parseFloat(item.qty.toString());
-        if (currentStock < orderQty) {
-          const shortage = orderQty - currentStock;
-          stockErrors.push(`Stok ${prod.name} kurang: butuh ${orderQty}, tersedia ${currentStock} (kurang ${shortage}).`);
-        } else {
-          updatedProducts.push({ id: prod.id, newStock: currentStock - orderQty, qty: orderQty });
-        }
+        const isMakeToOrder = (prod.fulfillmentType || "make_to_order") === "make_to_order";
 
         const recipes = await tx
           .select({
             ingredientId: productRecipes.ingredientId,
             qty: productRecipes.qty,
             name: ingredients.name,
+            unit: ingredients.unit,
+            stock: ingredients.stock,
             price: ingredients.price,
           })
           .from(productRecipes)
@@ -140,9 +152,47 @@ export async function POST(req: Request) {
           // HPP contribution for 1 batch = qty * price. HPP per porsi = contribution / yieldQty
           const hppContributionPerPorsi = yieldQty > 0 ? (recQty * ingPrice) / yieldQty : 0;
           productHppCost += hppContributionPerPorsi;
+
+          // If Make-to-Order, accumulate required ingredients directly from raw inventory
+          if (isMakeToOrder) {
+            const reqForThisItem = yieldQty > 0 ? (recQty / yieldQty) * orderQty : 0;
+            if (!requiredIngredientsMap[r.ingredientId]) {
+              requiredIngredientsMap[r.ingredientId] = {
+                id: r.ingredientId,
+                name: r.name,
+                unit: r.unit,
+                requiredQty: reqForThisItem,
+                currentStock: parseFloat(r.stock.toString()),
+              };
+            } else {
+              requiredIngredientsMap[r.ingredientId].requiredQty += reqForThisItem;
+            }
+          }
         }
 
         productHpps[prod.id] = productHppCost;
+
+        // If Make-to-Stock, validate finished product currentStock
+        if (!isMakeToOrder) {
+          const currentStock = parseFloat(prod.currentStock.toString());
+          if (currentStock < orderQty) {
+            const shortage = orderQty - currentStock;
+            stockErrors.push(`Stok produk ${prod.name} kurang: butuh ${orderQty}, tersedia ${currentStock} (kurang ${shortage}).`);
+          } else {
+            updatedProducts.push({ id: prod.id, newStock: currentStock - orderQty, qty: orderQty });
+          }
+        }
+      }
+
+      // Check MTO ingredient requirements
+      for (const ingIdStr of Object.keys(requiredIngredientsMap)) {
+        const ingId = parseInt(ingIdStr);
+        const req = requiredIngredientsMap[ingId];
+        if (req.currentStock < req.requiredQty) {
+          const shortage = req.requiredQty - req.currentStock;
+          const fmt = (v: number) => parseFloat(v.toFixed(3)).toString();
+          stockErrors.push(`Stok bahan baku ${req.name} kurang: butuh ${fmt(req.requiredQty)} ${req.unit}, tersedia ${fmt(req.currentStock)} ${req.unit} (kurang ${fmt(shortage)} ${req.unit}).`);
+        }
       }
 
       if (stockErrors.length > 0) {
@@ -166,7 +216,7 @@ export async function POST(req: Request) {
       const seq = String(counter.lastSeq).padStart(3, "0");
       const orderNumber = `INV-${dateKey}-${seq}`;
 
-      // 4. Update stock and write movements
+      // 4. Update stock and write movements (both MTS products and MTO ingredients)
       for (const update of updatedProducts) {
         await tx
           .update(products)
@@ -181,6 +231,29 @@ export async function POST(req: Request) {
           type: "sale",
           qty: (-update.qty).toString(),
           refId: orderNumber,
+          userId: session.id,
+        });
+      }
+
+      for (const ingIdStr of Object.keys(requiredIngredientsMap)) {
+        const ingId = parseInt(ingIdStr);
+        const ingReq = requiredIngredientsMap[ingId];
+        const newIngStock = ingReq.currentStock - ingReq.requiredQty;
+
+        await tx
+          .update(ingredients)
+          .set({
+            stock: newIngStock.toString(),
+            updatedAt: new Date(),
+          })
+          .where(eq(ingredients.id, ingId));
+
+        await tx.insert(stockMovements).values({
+          ingredientId: ingId,
+          type: "order",
+          qty: (-ingReq.requiredQty).toString(),
+          refId: orderNumber,
+          reason: `Pesanan MTO ${orderNumber}`,
           userId: session.id,
         });
       }
@@ -212,17 +285,20 @@ export async function POST(req: Request) {
         roundingAdjustment = grandTotal - revenueTotal;
       }
 
-      const changeAmount = amountReceivedVal !== null ? amountReceivedVal - grandTotal : null;
+      const changeAmount = isPaid && amountReceivedVal !== null ? amountReceivedVal - grandTotal : null;
 
-      if (paymentMethod === "cash" && amountReceivedVal !== null && changeAmount !== null && changeAmount < 0) {
+      if (isPaid && paymentMethod === "cash" && amountReceivedVal !== null && changeAmount !== null && changeAmount < 0) {
         throw new Error("Uang yang diterima kurang dari total pembayaran.");
       }
 
       // 6. Insert Order
+      const actualPaymentMethod = isPaid ? paymentMethod : (paymentMethod || "pending");
       const [newOrder] = await tx
         .insert(orders)
         .values({
           orderNumber,
+          orderType: orderType || "dine_in",
+          tableNo: tableNo || null,
           subtotal: subtotal.toString(),
           discount: discountVal.toString(),
           taxAmount: taxAmountVal.toString(),
@@ -232,11 +308,11 @@ export async function POST(req: Request) {
           roundingAdjustment: roundingAdjustment.toString(),
           grandTotal: grandTotal.toString(),
           profitTotal: profitTotal.toString(),
-          paymentMethod,
-          amountReceived: amountReceivedVal ? amountReceivedVal.toString() : null,
-          changeAmount: changeAmount !== null ? changeAmount.toString() : null,
+          paymentMethod: actualPaymentMethod,
+          amountReceived: isPaid && amountReceivedVal ? amountReceivedVal.toString() : null,
+          changeAmount: isPaid && changeAmount !== null ? changeAmount.toString() : null,
           customerName: customerName || null,
-          status: "paid",
+          status: isPaid ? "paid" : "open",
           cashierId: session.id,
         })
         .returning();
@@ -266,68 +342,70 @@ export async function POST(req: Request) {
         });
       }
 
-      // 8. Auto-insert kas masuk dari penjualan
-      await tx.insert(cashTransactions).values({
-        type: "in",
-        category: "Penjualan",
-        isOperational: false, // Revenue is tracked separately via orders, not double-counted in P&L expenses
-        description: `Penjualan Order ${orderNumber}`,
-        amount: grandTotal.toString(),
-        date: now,
-        sourceType: "order",
-        sourceRefId: orderNumber,
-        paymentGroup: paymentMethod === "cash" ? "tunai" : "non_tunai",
-        createdBy: session.id,
-      });
-
-      // 9. Auto-split kas masuk ke pocket_transactions (Kantong Kas)
-      const activePockets = await tx.select().from(cashPockets).where(eq(cashPockets.isActive, true));
-      const hppPocket = activePockets.find(p => p.type === 'cost' && p.label.includes('HPP'));
-      const profitPockets = activePockets.filter(p => p.type === 'profit_share').sort((a, b) => a.sortOrder - b.sortOrder);
-      const companyPocket = profitPockets.find(p => p.label === 'Kas Perusahaan') || profitPockets[0];
-
-      if (hppPocket && hppTotal > 0) {
-        await tx.insert(pocketTransactions).values({
-          pocketId: hppPocket.id,
-          direction: 'credit',
-          amount: hppTotal.toString(),
-          sourceType: 'order',
+      // 8. Auto-insert kas masuk & pocket_transactions ONLY if already paid
+      if (isPaid) {
+        await tx.insert(cashTransactions).values({
+          type: "in",
+          category: "Penjualan",
+          isOperational: false, // Revenue is tracked separately via orders, not double-counted in P&L expenses
+          description: `Penjualan Order ${orderNumber}`,
+          amount: grandTotal.toString(),
+          date: now,
+          sourceType: "order",
           sourceRefId: orderNumber,
-          note: `HPP dari Pesanan ${orderNumber}`,
+          paymentGroup: paymentMethod === "cash" ? "tunai" : "non_tunai",
+          createdBy: session.id,
         });
-      }
 
-      if (profitPockets.length > 0) {
-        let totalRounded = 0;
-        let pocketDistributions: Array<{id: number, rounded: number, pct: number}> = [];
-        
-        for (const pocket of profitPockets) {
-          const pct = parseFloat(pocket.percentage?.toString() || '0');
-          if (pct > 0) {
-            let exact = (profitTotal * pct) / 100;
-            let rounded = Math.round(exact / 100) * 100;
-            totalRounded += rounded;
-            pocketDistributions.push({ id: pocket.id, rounded, pct });
-          }
+        // Auto-split kas masuk ke pocket_transactions (Kantong Kas)
+        const activePockets = await tx.select().from(cashPockets).where(eq(cashPockets.isActive, true));
+        const hppPocket = activePockets.find(p => p.type === 'cost' && p.label.includes('HPP'));
+        const profitPockets = activePockets.filter(p => p.type === 'profit_share').sort((a, b) => a.sortOrder - b.sortOrder);
+        const companyPocket = profitPockets.find(p => p.label === 'Kas Perusahaan') || profitPockets[0];
+
+        if (hppPocket && hppTotal > 0) {
+          await tx.insert(pocketTransactions).values({
+            pocketId: hppPocket.id,
+            direction: 'credit',
+            amount: hppTotal.toString(),
+            sourceType: 'order',
+            sourceRefId: orderNumber,
+            note: `HPP dari Pesanan ${orderNumber}`,
+          });
         }
 
-        const expectedTotal = profitTotal + roundingAdjustment;
-        const diff = expectedTotal - totalRounded;
-
-        for (const p of pocketDistributions) {
-          let finalAmount = p.rounded;
-          if (p.id === companyPocket?.id) {
-            finalAmount += diff;
+        if (profitPockets.length > 0) {
+          let totalRounded = 0;
+          let pocketDistributions: Array<{id: number, rounded: number, pct: number}> = [];
+          
+          for (const pocket of profitPockets) {
+            const pct = parseFloat(pocket.percentage?.toString() || '0');
+            if (pct > 0) {
+              let exact = (profitTotal * pct) / 100;
+              let rounded = Math.round(exact / 100) * 100;
+              totalRounded += rounded;
+              pocketDistributions.push({ id: pocket.id, rounded, pct });
+            }
           }
-          if (finalAmount !== 0) {
-            await tx.insert(pocketTransactions).values({
-              pocketId: p.id,
-              direction: finalAmount >= 0 ? 'credit' : 'debit',
-              amount: Math.abs(finalAmount).toString(),
-              sourceType: 'order',
-              sourceRefId: orderNumber,
-              note: `Profit Share dari Pesanan ${orderNumber} (${p.pct}%)`,
-            });
+
+          const expectedTotal = profitTotal + roundingAdjustment;
+          const diff = expectedTotal - totalRounded;
+
+          for (const p of pocketDistributions) {
+            let finalAmount = p.rounded;
+            if (p.id === companyPocket?.id) {
+              finalAmount += diff;
+            }
+            if (finalAmount !== 0) {
+              await tx.insert(pocketTransactions).values({
+                pocketId: p.id,
+                direction: finalAmount >= 0 ? 'credit' : 'debit',
+                amount: Math.abs(finalAmount).toString(),
+                sourceType: 'order',
+                sourceRefId: orderNumber,
+                note: `Profit Share dari Pesanan ${orderNumber} (${p.pct}%)`,
+              });
+            }
           }
         }
       }

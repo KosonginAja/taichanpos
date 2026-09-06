@@ -14,7 +14,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
     }
 
-    const { name, sellPrice, yieldQty, isActive, minStock, recipes } = await req.json();
+    const { name, sellPrice, yieldQty, isActive, minStock, fulfillmentType, recipes } = await req.json();
 
     // Check if product exists
     const current = await db.query.products.findFirst({
@@ -38,6 +38,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
       if (isActive !== undefined) updateData.isActive = isActive;
       if (minStock !== undefined) updateData.minStock = minStock.toString();
+      if (fulfillmentType !== undefined) updateData.fulfillmentType = fulfillmentType;
       updateData.updatedAt = new Date();
 
       // Update product info
