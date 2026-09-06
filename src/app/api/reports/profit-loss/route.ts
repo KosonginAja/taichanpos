@@ -30,13 +30,21 @@ export async function GET(req: Request) {
       .where(and(gte(orders.date, start), lte(orders.date, end), eq(orders.status, "paid")));
 
     let grossRevenue = 0;
+    let cashRevenue = 0;
+    let nonCashRevenue = 0;
     let totalHpp = 0;
     let totalTax = 0;
     let totalServiceCharge = 0;
     let totalRoundingAdjustment = 0;
 
     for (const o of ordersData) {
-      grossRevenue += parseFloat(o.grandTotal?.toString() || o.revenueTotal.toString());
+      const orderTotal = parseFloat(o.grandTotal?.toString() || o.revenueTotal.toString());
+      grossRevenue += orderTotal;
+      if (o.paymentMethod === "cash") {
+        cashRevenue += orderTotal;
+      } else {
+        nonCashRevenue += orderTotal;
+      }
       totalHpp += parseFloat(o.hppTotal.toString());
       totalTax += parseFloat(o.taxAmount.toString());
       totalServiceCharge += parseFloat(o.serviceChargeAmount.toString());
@@ -74,6 +82,9 @@ export async function GET(req: Request) {
     return NextResponse.json({
       summary: {
         grossRevenue,
+        cashRevenue,
+        nonCashRevenue,
+        totalOrders: ordersData.length,
         totalHpp,
         grossProfit,
         totalTax,

@@ -726,5 +726,12 @@
     "note": "Modal pembatalan interaktif di kasir untuk memilih apakah makanan belum dimasak (stok gudang kembali utuh) atau sudah terlanjur dimasak (stok tidak kembali & otomatis dicatat sebagai kerugian waste). Data pesanan dipertahankan dengan status 'cancelled' untuk integritas audit trail.",
     "date": "2026-09-06",
     "id": "T104"
+  },
+  {
+    "task": "Penyelarasan sistem keuangan internal dan laporan bagi hasil investor transparan",
+    "status": "done",
+    "note": "Penyempurnaan Laporan Distribusi Bulanan di /dashboard/reports/monthly-distribution dengan integrasi dinamis kantong kas (stakeholder profit share), rincian penerimaan Tunai vs Non-Tunai/Bank, dan ekspor dokumen PDF resmi bertanda tangan investor & pengelola.",
+    "date": "2026-09-06",
+    "id": "T105"
   }
 ]
