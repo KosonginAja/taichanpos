@@ -123,10 +123,21 @@ export default function MonthlyDistributionPage() {
     };
 
     // A. Revenue
-    renderRow("A. OMZET KOTOR (PENJUALAN)", fmt(data.summary.grossRevenue), true);
+    renderRow("A. OMZET KOTOR (PENJUALAN BRUTO)", fmt(data.summary.grossRevenue), true);
+    if (data.summary.offlineGrossRevenue !== undefined && data.summary.gofoodGrossRevenue !== undefined) {
+      renderRow(`- Penjualan Offline (Dine-In & Bungkus)`, fmt(data.summary.offlineGrossRevenue), false, 2);
+      if (data.summary.gofoodGrossRevenue > 0) {
+        renderRow(`- Penjualan Bruto GoFood`, fmt(data.summary.gofoodGrossRevenue), false, 2);
+        renderRow(`  Potongan Komisi GoFood`, `- ${fmt(data.summary.gofoodCommission || 0)}`, false, 4);
+        renderRow(`  Pencairan Bersih GoFood ke Rekening`, fmt(data.summary.gofoodNetPayout || 0), false, 4);
+      }
+    }
     if (data.summary.cashRevenue !== undefined && data.summary.nonCashRevenue !== undefined) {
-      renderRow(`- Penerimaan Kas Tunai`, fmt(data.summary.cashRevenue), false, 2);
-      renderRow(`- Penerimaan Non-Tunai (QRIS/Transfer Bank)`, fmt(data.summary.nonCashRevenue), false, 2);
+      renderRow(`- Penerimaan Kas Fisik Tunai`, fmt(data.summary.cashRevenue), false, 2);
+      renderRow(`- Penerimaan Rekening Bank (QRIS/Transfer/GoFood Net)`, fmt(data.summary.nonCashRevenue), false, 2);
+    }
+    if (data.summary.gofoodCommission > 0) {
+      renderRow(`Total Penerimaan Bersih Riil Usaha`, fmt(data.summary.realNetIntake || (data.summary.grossRevenue - data.summary.gofoodCommission)), true, 2);
     }
     y += 2;
 
@@ -289,24 +300,59 @@ export default function MonthlyDistributionPage() {
 
             <div className="mt-8 space-y-6 text-slate-700">
               {/* Section A: Revenue */}
-              <div className="space-y-2 pb-4 border-b border-slate-100">
+              <div className="space-y-3 pb-4 border-b border-slate-100">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-slate-900 text-sm">A. OMZET KOTOR (PENJUALAN)</span>
-                  <span className="font-black text-slate-900 text-lg">{fmt(data.summary.grossRevenue)}</span>
+                  <div>
+                    <span className="font-bold text-slate-900 text-sm">A. OMZET PENJUALAN</span>
+                    <p className="text-[11px] text-slate-500">Transparansi omzet offline vs GoFood & potongan platform</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-black text-slate-900 text-lg block">{fmt(data.summary.grossRevenue)}</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Omzet Bruto Total</span>
+                  </div>
                 </div>
 
+                {/* Channel Breakdown if GoFood exists */}
+                {data.summary.gofoodGrossRevenue > 0 && (
+                  <div className="bg-orange-50/40 border border-orange-200/60 rounded-2xl p-3.5 space-y-2 text-xs">
+                    <div className="flex justify-between items-center text-slate-700">
+                      <span className="font-semibold">Penjualan Offline (Dine-in / Bungkus)</span>
+                      <span className="font-bold">{fmt(data.summary.offlineGrossRevenue || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-700">
+                      <span className="font-semibold flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">🛵 GoFood</span>
+                        Penjualan Bruto Online
+                      </span>
+                      <span className="font-bold">{fmt(data.summary.gofoodGrossRevenue)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-rose-600 pl-4 border-l-2 border-rose-200 text-[11px]">
+                      <span>Potongan Komisi GoFood</span>
+                      <span className="font-semibold">- {fmt(data.summary.gofoodCommission || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-700 pl-4 border-l-2 border-emerald-300 text-[11px] font-bold">
+                      <span>Pencairan Bersih GoFood ke Rekening Bank</span>
+                      <span>{fmt(data.summary.gofoodNetPayout || 0)}</span>
+                    </div>
+                    <div className="border-t border-dashed border-orange-200 pt-2 flex justify-between items-center text-slate-900 font-extrabold text-xs">
+                      <span>Total Penerimaan Bersih Riil Usaha</span>
+                      <span className="text-orange-600 font-black">{fmt(data.summary.realNetIntake || data.summary.grossRevenue)}</span>
+                    </div>
+                  </div>
+                )}
+
                 {data.summary.cashRevenue !== undefined && data.summary.nonCashRevenue !== undefined && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs">
                       <span className="text-slate-500 flex items-center gap-1.5">
-                        <Banknote className="w-3.5 h-3.5 text-emerald-600" /> Kas Tunai
+                        <Banknote className="w-3.5 h-3.5 text-emerald-600" /> Kas Fisik Tunai
                       </span>
                       <span className="font-bold text-slate-700">{fmt(data.summary.cashRevenue)}</span>
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs">
                       <span className="text-slate-500 flex items-center gap-1.5">
-                        <CreditCard className="w-3.5 h-3.5 text-blue-600" /> Non-Tunai (QRIS/Transfer)
+                        <CreditCard className="w-3.5 h-3.5 text-blue-600" /> Masuk Rekening Bank (QRIS / GoFood)
                       </span>
                       <span className="font-bold text-slate-700">{fmt(data.summary.nonCashRevenue)}</span>
                     </div>

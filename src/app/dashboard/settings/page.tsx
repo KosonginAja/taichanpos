@@ -27,6 +27,7 @@ export default function SettingsPage() {
   const [roundingEnabled, setRoundingEnabled] = useState(false);
   const [roundingNearest, setRoundingNearest] = useState("100");
   const [logoUrl, setLogoUrl] = useState("");
+  const [gofoodCommissionPercent, setGofoodCommissionPercent] = useState("20");
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -99,6 +100,7 @@ export default function SettingsPage() {
       setRoundingEnabled(settings.roundingEnabled || false);
       setRoundingNearest(settings.roundingNearest ? settings.roundingNearest.toString() : "100");
       setLogoUrl(settings.logoUrl || "");
+      setGofoodCommissionPercent(settings.gofoodCommissionPercent ? settings.gofoodCommissionPercent.toString() : "20");
     }
   }, [settings, error]);
 
@@ -124,6 +126,7 @@ export default function SettingsPage() {
           serviceChargeEnabled, serviceChargePercent: parseFloat(serviceChargePercent || "0"),
           currencySymbol, defaultReceiptSize, logoUrl,
           roundingEnabled, roundingNearest,
+          gofoodCommissionPercent: parseFloat(gofoodCommissionPercent || "20"),
         }),
       });
       const data = await res.json();
@@ -310,6 +313,23 @@ export default function SettingsPage() {
                 </select>
               </div>
             )}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1.5">Potongan Komisi GoFood (%)</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  max="100"
+                  value={gofoodCommissionPercent}
+                  onChange={(e) => setGofoodCommissionPercent(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500 pr-10"
+                  placeholder="20"
+                />
+                <span className="absolute right-3.5 top-2.5 text-xs text-slate-400 font-bold">%</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">Potongan standar komisi GoFood (default 20%). Dipakai menghitung pencairan bersih ke rekening bank.</p>
+            </div>
           </div>
         </div>
 

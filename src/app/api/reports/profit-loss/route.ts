@@ -36,22 +36,40 @@ export async function GET(req: Request) {
     let totalTax = 0;
     let totalServiceCharge = 0;
     let totalRoundingAdjustment = 0;
+    let offlineGrossRevenue = 0;
+    let gofoodGrossRevenue = 0;
+    let gofoodCommission = 0;
+    let gofoodNetPayout = 0;
 
     for (const o of ordersData) {
       const orderTotal = parseFloat(o.grandTotal?.toString() || o.revenueTotal.toString());
       grossRevenue += orderTotal;
-      if (o.paymentMethod === "cash") {
-        cashRevenue += orderTotal;
+
+      if (o.orderType === "gofood") {
+        gofoodGrossRevenue += orderTotal;
+        const comm = parseFloat(o.platformCommission?.toString() || "0");
+        const net = parseFloat(o.netPayout?.toString() || (orderTotal - comm).toString());
+        gofoodCommission += comm;
+        gofoodNetPayout += net;
+        nonCashRevenue += net; // Actual money deposited into bank account
       } else {
-        nonCashRevenue += orderTotal;
+        offlineGrossRevenue += orderTotal;
+        if (o.paymentMethod === "cash") {
+          cashRevenue += orderTotal;
+        } else {
+          nonCashRevenue += orderTotal;
+        }
       }
+
       totalHpp += parseFloat(o.hppTotal.toString());
       totalTax += parseFloat(o.taxAmount.toString());
       totalServiceCharge += parseFloat(o.serviceChargeAmount.toString());
       totalRoundingAdjustment += parseFloat(o.roundingAdjustment?.toString() || "0");
     }
 
-    const grossProfit = grossRevenue - totalHpp;
+    // Real net intake is actual revenue received after platform commission
+    const realNetIntake = grossRevenue - gofoodCommission;
+    const grossProfit = realNetIntake - totalHpp;
 
     // Fetch operational expenses from cash_transactions (type='out', isOperational=true)
     const expenseTxs = await db
@@ -77,11 +95,16 @@ export async function GET(req: Request) {
       expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + amt;
     }
 
-    const netProfit = grossProfit - totalExpenses;
+    const netProfit = grossProfit - totalExpenses + totalRoundingAdjustment;
 
     return NextResponse.json({
       summary: {
         grossRevenue,
+        offlineGrossRevenue,
+        gofoodGrossRevenue,
+        gofoodCommission,
+        gofoodNetPayout,
+        realNetIntake,
         cashRevenue,
         nonCashRevenue,
         totalOrders: ordersData.length,

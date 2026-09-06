@@ -52,7 +52,8 @@ export const ingredientRecipes = pgTable("ingredient_recipes", {
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  sellPrice: numeric("sell_price", { precision: 12, scale: 2 }).notNull(), // harga jual per porsi
+  sellPrice: numeric("sell_price", { precision: 12, scale: 2 }).notNull(), // harga jual per porsi offline
+  gofoodPrice: numeric("gofood_price", { precision: 12, scale: 2 }), // harga jual khusus GoFood / online
   yieldQty: numeric("yield_qty", { precision: 12, scale: 3 }).notNull(), // batch yield quantity
   currentStock: numeric("current_stock", { precision: 12, scale: 3 }).notNull().default("0"),
   minStock: numeric("min_stock", { precision: 12, scale: 3 }).notNull().default("0"),
@@ -81,8 +82,11 @@ export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(), // INV-YYYYMMDD-seq
   date: timestamp("date").notNull().defaultNow(),
-  orderType: text("order_type").notNull().default("dine_in"), // "dine_in" | "takeaway" | "delivery"
+  orderType: text("order_type").notNull().default("dine_in"), // "dine_in" | "takeaway" | "delivery" | "gofood"
   tableNo: text("table_no"), // "Meja 01", "Takeaway #05", etc.
+  onlineOrderId: text("online_order_id"), // No. Pesanan GoFood / Pin GoBiz, misal: "GF-382"
+  platformCommission: numeric("platform_commission", { precision: 12, scale: 2 }).notNull().default("0"), // Potongan komisi GoFood (Rp)
+  netPayout: numeric("net_payout", { precision: 12, scale: 2 }).notNull().default("0"), // Dana bersih cair ke kas/bank (Rp)
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
   discount: numeric("discount", { precision: 12, scale: 2 }).notNull().default("0"),
   taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }).notNull().default("0"),
@@ -247,6 +251,7 @@ export const businessSettings = pgTable("business_settings", {
   serviceChargePercent: numeric("service_charge_percent", { precision: 5, scale: 2 }).notNull().default("0"),
   currencySymbol: text("currency_symbol").notNull().default("Rp"),
   defaultReceiptSize: text("default_receipt_size").notNull().default("58mm"),
+  gofoodCommissionPercent: numeric("gofood_commission_percent", { precision: 5, scale: 2 }).notNull().default("20"), // komisi bawaan GoFood (%)
   roundingEnabled: boolean("rounding_enabled").notNull().default(false),
   roundingNearest: numeric("rounding_nearest", { precision: 10, scale: 2 }).notNull().default("100"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

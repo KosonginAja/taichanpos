@@ -57,8 +57,10 @@ export default function OrdersPage() {
   // Cart State & Order Options
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState("");
-  const [orderType, setOrderType] = useState<"dine_in" | "takeaway">("dine_in");
+  const [orderType, setOrderType] = useState<"dine_in" | "takeaway" | "gofood">("dine_in");
   const [tableNo, setTableNo] = useState("Meja 1");
+  const [onlineOrderId, setOnlineOrderId] = useState("");
+  const [driverName, setDriverName] = useState("");
   const [discountType, setDiscountType] = useState<"nominal" | "percent">("nominal");
   const [discountValue, setDiscountValue] = useState("0");
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -72,6 +74,7 @@ export default function OrdersPage() {
   const [printOrder, setPrintOrder] = useState<any>(null);
   const [printMode, setPrintMode] = useState<"receipt" | "kot">("receipt");
   const [receiptWidth, setReceiptWidth] = useState<"58" | "80">("58");
+  const [paperLengthMode, setPaperLengthMode] = useState<"auto" | "80" | "110" | "140">("auto");
 
   // Settle open order modal state
   const [settleOrder, setSettleOrder] = useState<any>(null);
@@ -150,13 +153,44 @@ export default function OrdersPage() {
     setHasStockError(isShort);
   }, [cart, products, ingredients]);
 
+  const getProductPrice = (product: any) => {
+    if (orderType === "gofood") {
+      return product.gofoodPrice || Math.round((product.sellPrice * 1.25) / 500) * 500;
+    }
+    return product.sellPrice;
+  };
+
+  const handleSwitchOrderType = (type: "dine_in" | "takeaway" | "gofood") => {
+    setOrderType(type);
+    if (type === "gofood") {
+      setPaymentMethod("gofood");
+    } else if (paymentMethod === "gofood") {
+      setPaymentMethod("cash");
+    }
+    // Update cart item prices to reflect channel
+    if (cart.length > 0 && products) {
+      setCart((prev) =>
+        prev.map((c) => {
+          const prod = products.find((p: any) => p.id === c.productId);
+          if (!prod) return c;
+          const newPrice =
+            type === "gofood"
+              ? prod.gofoodPrice || Math.round((prod.sellPrice * 1.25) / 500) * 500
+              : prod.sellPrice;
+          return { ...c, sellPrice: newPrice };
+        })
+      );
+    }
+  };
+
   // Cart operations
   const handleAddToCart = (product: any) => {
+    const price = getProductPrice(product);
     const existing = cart.find((item) => item.productId === product.id);
     if (existing) {
       setCart(cart.map((item) => item.productId === product.id ? { ...item, qty: item.qty + 1 } : item));
     } else {
-      setCart([...cart, { productId: product.id, name: product.name, qty: 1, sellPrice: product.sellPrice }]);
+      setCart([...cart, { productId: product.id, name: product.name, qty: 1, sellPrice: price }]);
     }
   };
 
@@ -175,6 +209,8 @@ export default function OrdersPage() {
   const handleClearCart = () => {
     setCart([]);
     setCustomerName("");
+    setOnlineOrderId("");
+    setDriverName("");
     setDiscountValue("0");
     setAmountReceived("");
     setCheckoutError("");
@@ -229,19 +265,34 @@ export default function OrdersPage() {
     setCheckoutError("");
     setCheckoutSuccess("");
 
+    const finalCustomer =
+      customerName ||
+      (orderType === "gofood"
+        ? (driverName ? `${driverName} (Driver)` : "Driver Gojek")
+        : null);
+
+    const finalTableNo =
+      orderType === "dine_in"
+        ? tableNo || "Meja 1"
+        : orderType === "gofood"
+        ? (onlineOrderId ? `GoFood #${onlineOrderId}` : "GoFood Online")
+        : (tableNo ? `Takeaway (${tableNo})` : "Takeaway");
+
     const payload = {
       items: cart.map((c) => ({
         productId: c.productId,
         qty: c.qty,
+        sellPrice: c.sellPrice,
       })),
       discount: discountNominal,
       taxAmount,
       serviceChargeAmount,
-      paymentMethod: mode === "paid" ? paymentMethod : "unpaid",
+      paymentMethod: mode === "paid" ? (orderType === "gofood" ? "gofood" : paymentMethod) : "unpaid",
       amountReceived: mode === "paid" && paymentMethod === "cash" ? parseFloat(amountReceived) : null,
-      customerName: customerName || null,
+      customerName: finalCustomer,
       orderType,
-      tableNo: orderType === "dine_in" ? (tableNo || "Meja 1") : (tableNo ? `Takeaway (${tableNo})` : "Takeaway"),
+      onlineOrderId: orderType === "gofood" ? (onlineOrderId || "GF-Online") : null,
+      tableNo: finalTableNo,
       status: mode,
     };
 
@@ -255,7 +306,13 @@ export default function OrdersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal memproses pesanan.");
 
-      setCheckoutSuccess(mode === "open" ? "Pesanan meja berhasil disimpan & dikirim ke dapur!" : "Pesanan berhasil dibayar!");
+      setCheckoutSuccess(
+        mode === "open"
+          ? "Pesanan meja berhasil disimpan & dikirim ke dapur!"
+          : orderType === "gofood"
+          ? `Pesanan GoFood ${data.orderNumber} berhasil dicatat!`
+          : "Pesanan berhasil dibayar!"
+      );
       
       // Load data for printing
       const orderToPrint = {
@@ -263,7 +320,9 @@ export default function OrdersPage() {
         items: cart, // use local layout for print details
         cashierName,
         orderType,
+        onlineOrderId: payload.onlineOrderId,
         tableNo: payload.tableNo,
+        customerName: finalCustomer,
       };
       setPrintOrder(orderToPrint);
       setPrintMode(mode === "open" ? "kot" : "receipt");
@@ -362,15 +421,29 @@ export default function OrdersPage() {
     if (!printOrder) return;
 
     const paperWidth = receiptWidth === "58" ? "48mm" : "72mm";
+    const numItems = (printOrder.items || []).length;
+
+    // Calculate dynamic auto height in mm to prevent Rongta 58mm 210mm paper blowout
+    let calculatedHeightMm = 75;
+    if (printMode === "kot") {
+      calculatedHeightMm = Math.max(60, Math.ceil(55 + (numItems * 7.5)));
+    } else if (printOrder.orderType === "gofood") {
+      calculatedHeightMm = Math.max(65, Math.ceil(68 + (numItems * 7.5)));
+    } else {
+      calculatedHeightMm = Math.max(70, Math.ceil(88 + (numItems * 8.5)));
+    }
+
+    const targetHeightMm = paperLengthMode === "auto" ? calculatedHeightMm : parseInt(paperLengthMode);
+
     const fmtRp = (v: number) =>
       "Rp " + new Intl.NumberFormat("id-ID").format(Math.round(v));
 
     const row = (label: string, value: string, bold = false) =>
-      `<div style="display:flex;justify-content:space-between;${bold ? "font-weight:900;font-size:12px;" : ""}">
+      `<div style="display:flex;justify-content:space-between;${bold ? "font-weight:900;font-size:11px;" : ""}">
         <span>${label}</span><span>${value}</span>
       </div>`;
 
-    const divider = `<div style="border-top:1px dashed #444;margin:4px 0;"></div>`;
+    const divider = `<div style="border-top:1px dashed #444;margin:3px 0;"></div>`;
 
     let htmlContent = "";
 
@@ -378,9 +451,9 @@ export default function OrdersPage() {
       // Kitchen Order Ticket (KOT)
       const itemsHtml = printOrder.items
         .map(
-          (i: any) => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted #ccc;font-size:13px">
+          (i: any) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted #ccc;font-size:12px">
             <span style="font-weight:bold">${i.name || i.productName}</span>
-            <span style="font-size:15px;font-weight:900">x${i.qty}</span>
+            <span style="font-size:14px;font-weight:900">x${i.qty}</span>
           </div>`
         )
         .join("");
@@ -392,40 +465,92 @@ export default function OrdersPage() {
   <title>KOT ${printOrder.orderNumber}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    @page { size: ${paperWidth} auto; margin: 2mm; }
-    html, body { width: ${paperWidth}; background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 11px; }
-    body { padding: 2mm; }
+    @page { size: ${paperWidth} ${targetHeightMm}mm; margin: 0; }
+    html, body { width: ${paperWidth}; background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.25; }
+    body { padding: 1.5mm 1mm; }
   </style>
 </head>
 <body>
-  <div style="text-align:center;font-weight:900;font-size:14px;border-bottom:2px solid #000;padding-bottom:3px;margin-bottom:5px">TIKET DAPUR (KOT)</div>
+  <div style="text-align:center;font-weight:900;font-size:13px;border-bottom:2px solid #000;padding-bottom:2px;margin-bottom:3px">TIKET DAPUR (KOT)</div>
   <div style="font-size:13px;font-weight:900;text-transform:uppercase;margin-bottom:2px">${printOrder.tableNo || "MEJA / ANTREAN"}</div>
-  <div style="font-size:10px;color:#333;margin-bottom:4px">
-    <span>Tipe: <b>${printOrder.orderType === "takeaway" ? "BUNGKUS / TAKEAWAY" : "MAKAN DI TEMPAT"}</b></span>
+  <div style="font-size:9px;color:#333;margin-bottom:3px">
+    <span>Tipe: <b>${printOrder.orderType === "gofood" ? "🛵 GOFOOD ONLINE" : (printOrder.orderType === "takeaway" ? "BUNGKUS / TAKEAWAY" : "MAKAN DI TEMPAT")}</b></span>
   </div>
-  <div style="font-size:9px;line-height:1.5">
+  <div style="font-size:9px;line-height:1.4">
     <div>No: ${printOrder.orderNumber}</div>
     <div>Waktu: ${new Date(printOrder.date || new Date()).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}</div>
-    ${printOrder.customerName ? `<div>Plg: ${printOrder.customerName}</div>` : ""}
+    ${printOrder.customerName ? `<div>Plg/Driver: ${printOrder.customerName}</div>` : ""}
     <div>Kasir: ${printOrder.cashierName || cashierName}</div>
   </div>
   ${divider}
-  <div style="margin:6px 0">${itemsHtml}</div>
+  <div style="margin:4px 0">${itemsHtml}</div>
   ${divider}
-  <div style="text-align:center;font-size:9px;color:#555;margin-top:4px">--- Harap Segera Diproses ---</div>
+  <div style="text-align:center;font-size:8.5px;color:#555;margin-top:3px">--- Harap Segera Diproses ---</div>
+</body>
+</html>`;
+    } else if (printOrder.orderType === "gofood") {
+      // Specialized GoFood Slip (for bag attachment and driver handover)
+      const gofoodItemsHtml = printOrder.items
+        .map(
+          (i: any) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:3.5px 0;border-bottom:1px dotted #bbb;font-size:11px">
+            <span style="font-weight:bold">[ ] ${i.name || i.productName}</span>
+            <span style="font-size:13px;font-weight:900">x${i.qty}</span>
+          </div>`
+        )
+        .join("");
+
+      const grandTotalAmt = parseFloat(printOrder.grandTotal?.toString() || printOrder.revenueTotal?.toString() || "0");
+
+      htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>GoFood ${printOrder.orderNumber}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: ${paperWidth} ${targetHeightMm}mm; margin: 0; }
+    html, body { width: ${paperWidth}; background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.25; }
+    body { padding: 1.5mm 1mm; }
+  </style>
+</head>
+<body>
+  <div style="text-align:center;font-weight:900;font-size:13px;border-bottom:2px solid #000;padding-bottom:2px;margin-bottom:3px">
+    PESANAN GOFOOD
+  </div>
+  <div style="text-align:center;font-weight:900;font-size:15px;background:#eee;padding:2px 0;margin-bottom:3px;border:1px dashed #333">
+    ${printOrder.onlineOrderId ? `#${printOrder.onlineOrderId}` : (printOrder.tableNo || "GOFOOD")}
+  </div>
+  <div style="font-size:9px;line-height:1.4">
+    <div>No. POS: ${printOrder.orderNumber}</div>
+    <div>Waktu: ${new Date(printOrder.date || new Date()).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}</div>
+    <div>Driver / Plg: <b>${printOrder.customerName || "Driver Gojek"}</b></div>
+    <div>Status: <b>LUNAS VIA APLIKASI</b></div>
+    <div>Kasir: ${printOrder.cashierName || cashierName}</div>
+  </div>
+  ${divider}
+  <div style="font-size:9px;font-weight:bold;text-align:center;margin-bottom:2px">--- CEK ISI KANTONG ---</div>
+  <div style="margin:3px 0">${gofoodItemsHtml}</div>
+  ${divider}
+  <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:bold">
+    <span>TOTAL TAGIHAN:</span>
+    <span>${fmtRp(grandTotalAmt)}</span>
+  </div>
+  ${divider}
+  <div style="text-align:center;font-size:8.5px;color:#444;margin-top:3px">Tempelkan di Kantong / Serahkan Driver</div>
+  <div style="text-align:center;font-size:8px;color:#888;margin-top:1px">--- Taichan POS Online ---</div>
 </body>
 </html>`;
     } else {
       // Standard Customer Receipt
       const logoHtml = settings?.logoUrl
-        ? `<div style="text-align:center;margin-bottom:2px"><img src="${settings.logoUrl}" style="max-height:28px;display:inline-block;filter:grayscale(1);" /></div>`
+        ? `<div style="text-align:center;margin-bottom:2px"><img src="${settings.logoUrl}" style="max-height:26px;display:inline-block;filter:grayscale(1);" /></div>`
         : "";
 
       const itemsHtml = printOrder.items
         .map(
-          (i: any) => `<div style="margin-bottom:4px">
-            <div style="font-weight:600">${i.name || i.productName}</div>
-            <div style="display:flex;justify-content:space-between;font-size:9px;padding-left:6px">
+          (i: any) => `<div style="margin-bottom:3px">
+            <div style="font-weight:600;font-size:10.5px">${i.name || i.productName}</div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;padding-left:4px">
               <span>${i.qty} x ${fmtRp(i.sellPrice)}</span>
               <span>${fmtRp(i.qty * i.sellPrice)}</span>
             </div>
@@ -450,7 +575,7 @@ export default function OrdersPage() {
         roundingAdjAmt !== 0 ? row("Sebelum Pembulatan:", fmtRp(parseFloat(printOrder.revenueTotal.toString()))) : "",
         roundingAdjAmt !== 0 ? row("Pembulatan:", (roundingAdjAmt > 0 ? "+" : "") + fmtRp(roundingAdjAmt)) : "",
         row(roundingAdjAmt !== 0 ? "TOTAL BAYAR:" : "TOTAL:", fmtRp(grandTotalAmt), true),
-        `<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px">
+        `<div style="display:flex;justify-content:space-between;margin-top:3px;font-size:9px">
            <span>Metode:</span><span style="font-weight:700;text-transform:uppercase">${printOrder.paymentMethod}</span>
          </div>`,
         printOrder.paymentMethod === "cash"
@@ -466,18 +591,18 @@ export default function OrdersPage() {
   <title>Struk ${printOrder.orderNumber}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    @page { size: ${paperWidth} auto; margin: 2mm 2mm 4mm 2mm; }
-    html, body { width: ${paperWidth}; background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 11px; }
-    body { padding: 2mm; }
+    @page { size: ${paperWidth} ${targetHeightMm}mm; margin: 0; }
+    html, body { width: ${paperWidth}; background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.25; }
+    body { padding: 1.5mm 1mm; }
   </style>
 </head>
 <body>
   ${logoHtml}
-  <div style="text-align:center;font-weight:bold;font-size:13px;text-transform:uppercase">${settings?.businessName || "MY BUSINESS"}</div>
-  <div style="text-align:center;font-size:9px;margin-top:1px">${settings?.address || ""}</div>
-  ${settings?.phone ? `<div style="text-align:center;font-size:9px">Telp: ${settings.phone}</div>` : ""}
+  <div style="text-align:center;font-weight:bold;font-size:12px;text-transform:uppercase">${settings?.businessName || "MY BUSINESS"}</div>
+  <div style="text-align:center;font-size:8.5px;margin-top:1px">${settings?.address || ""}</div>
+  ${settings?.phone ? `<div style="text-align:center;font-size:8.5px">Telp: ${settings.phone}</div>` : ""}
   ${divider}
-  <div style="font-size:9px;line-height:1.6">
+  <div style="font-size:8.5px;line-height:1.4">
     <div>No: ${printOrder.orderNumber}</div>
     ${printOrder.tableNo ? `<div>${printOrder.tableNo} (${printOrder.orderType === 'takeaway' ? 'Takeaway' : 'Dine-In'})</div>` : ""}
     <div>Tgl: ${new Date(printOrder.date || new Date()).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}</div>
@@ -489,8 +614,8 @@ export default function OrdersPage() {
   ${divider}
   ${totalsHtml}
   ${divider}
-  <div style="text-align:center;font-size:10px;font-weight:bold;margin-top:4px">${settings?.receiptFooterNote || "Terima Kasih Atas Kunjungan Anda"}</div>
-  <div style="text-align:center;font-size:8px;color:#666;margin-top:2px">Struk ini sah dicetak otomatis</div>
+  <div style="text-align:center;font-size:9px;font-weight:bold;margin-top:3px">${settings?.receiptFooterNote || "Terima Kasih Atas Kunjungan Anda"}</div>
+  <div style="text-align:center;font-size:7.5px;color:#666;margin-top:1px">Struk ini sah dicetak otomatis</div>
 </body>
 </html>`;
     }
@@ -636,8 +761,28 @@ export default function OrdersPage() {
                       </p>
                     </div>
                     <div className="flex items-center justify-between mt-4">
-                      <span className="font-extrabold text-orange-500 text-lg">{formatRupiah(p.sellPrice)}</span>
-                      <span className="text-[10px] bg-slate-50 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full font-bold">
+                      {orderType === "gofood" ? (
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold text-emerald-600 text-lg">
+                              {formatRupiah(getProductPrice(p))}
+                            </span>
+                            <span className="text-[10px] text-slate-400 line-through">
+                              {formatRupiah(p.sellPrice)}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-emerald-700 font-bold block">
+                            🛵 Harga GoFood
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="font-extrabold text-orange-500 text-lg">{formatRupiah(p.sellPrice)}</span>
+                      )}
+                      <span className={`text-[10px] border px-2 py-0.5 rounded-full font-bold ${
+                        orderType === "gofood"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                          : "bg-slate-50 text-slate-500 border-slate-200"
+                      }`}>
                         + Tambah
                       </span>
                     </div>
@@ -716,77 +861,141 @@ export default function OrdersPage() {
 
             {/* Inputs & Order Flow Form */}
             <form onSubmit={(e) => handleCheckout(e, "paid")} className="space-y-4 pt-4 border-t border-slate-200">
-              {/* Order Type Toggle */}
+              {/* Order Type Toggle (Dine In, Takeaway, GoFood) */}
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Tipe Layanan</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Tipe Layanan / Channel</label>
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setOrderType("dine_in")}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                    onClick={() => handleSwitchOrderType("dine_in")}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 border transition-all cursor-pointer ${
                       orderType === "dine_in"
                         ? "bg-orange-500 border-orange-500 text-white shadow-sm"
                         : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                     }`}
                   >
-                    <Utensils className="w-3.5 h-3.5" /> Makan di Tempat
+                    <Utensils className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Dine-In</span>
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => setOrderType("takeaway")}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                    onClick={() => handleSwitchOrderType("takeaway")}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 border transition-all cursor-pointer ${
                       orderType === "takeaway"
                         ? "bg-orange-500 border-orange-500 text-white shadow-sm"
                         : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                     }`}
                   >
-                    <ShoppingBag className="w-3.5 h-3.5" /> Bungkus / Takeaway
+                    <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Bungkus</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchOrderType("gofood")}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 border transition-all cursor-pointer ${
+                      orderType === "gofood"
+                        ? "bg-emerald-600 border-emerald-600 text-white shadow-sm shadow-emerald-600/20"
+                        : "bg-emerald-50/70 border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                    }`}
+                  >
+                    <span>🛵</span>
+                    <span className="truncate">GoFood</span>
                   </button>
                 </div>
               </div>
 
-              {/* Table / Queue Input with Quick Chips */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">
-                  {orderType === "dine_in" ? "Nomor Meja" : "Nomor / Nama Antrean"}
-                </label>
-                <input
-                  type="text"
-                  value={tableNo}
-                  onChange={(e) => setTableNo(e.target.value)}
-                  placeholder={orderType === "dine_in" ? "Contoh: Meja 05" : "Contoh: Antrean 01"}
-                  className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
-                />
-                {orderType === "dine_in" && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {["Meja 1", "Meja 2", "Meja 3", "Meja 4", "Meja 5", "Meja 6"].map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTableNo(t)}
-                        className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
-                          tableNo === t
-                            ? "bg-orange-100 border-orange-300 text-orange-700 font-bold"
-                            : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
+              {/* Order Channel Specific Inputs */}
+              {orderType === "gofood" ? (
+                <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-900 flex items-center gap-1">
+                      🛵 Pesanan GoFood Online
+                    </span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                      Komisi: {settings?.gofoodCommissionPercent || 20}%
+                    </span>
                   </div>
-                )}
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Nama Pelanggan (Opsional)</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
-                  placeholder="Umum / Budi"
-                />
-              </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        No. Pesanan / Pin GoBiz
+                      </label>
+                      <input
+                        type="text"
+                        value={onlineOrderId}
+                        onChange={(e) => setOnlineOrderId(e.target.value)}
+                        placeholder="Cth: GF-294"
+                        className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 text-slate-800 text-xs font-bold focus:outline-none focus:border-emerald-500 uppercase"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Nama Driver / Pembeli
+                      </label>
+                      <input
+                        type="text"
+                        value={driverName}
+                        onChange={(e) => setDriverName(e.target.value)}
+                        placeholder="Cth: Pak Slamet"
+                        className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 text-slate-800 text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] text-emerald-800 bg-white/80 p-2 rounded-lg border border-emerald-200/60 leading-tight">
+                    💡 Pembayaran otomatis lunas via aplikasi Gojek. Harga menu otomatis memakai harga khusus GoFood.
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Table / Queue Input with Quick Chips */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">
+                      {orderType === "dine_in" ? "Nomor Meja" : "Nomor / Nama Antrean"}
+                    </label>
+                    <input
+                      type="text"
+                      value={tableNo}
+                      onChange={(e) => setTableNo(e.target.value)}
+                      placeholder={orderType === "dine_in" ? "Contoh: Meja 05" : "Contoh: Antrean 01"}
+                      className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
+                    />
+                    {orderType === "dine_in" && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {["Meja 1", "Meja 2", "Meja 3", "Meja 4", "Meja 5", "Meja 6"].map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setTableNo(t)}
+                            className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                              tableNo === t
+                                ? "bg-orange-100 border-orange-300 text-orange-700 font-bold"
+                                : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
+                            }`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Nama Pelanggan (Opsional)</label>
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
+                      placeholder="Umum / Budi"
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Discount inputs */}
               <div className="grid grid-cols-3 gap-2">
@@ -814,47 +1023,61 @@ export default function OrdersPage() {
               </div>
 
               {/* Payment Methods */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Metode Pembayaran</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {["cash", "qris", "transfer"].map((method) => (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() => setPaymentMethod(method)}
-                      className={`py-2 rounded-xl text-xs font-bold border capitalize transition-all ${
-                        paymentMethod === method
-                          ? "bg-orange-500/10 border-orange-500 text-orange-600 font-extrabold"
-                          : "bg-slate-50/50 border-slate-200 text-slate-500 hover:text-slate-800"
-                      }`}
-                    >
-                      {method}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Cash payment received */}
-              {paymentMethod === "cash" && (
-                <div className="grid grid-cols-2 gap-4">
+              {orderType === "gofood" ? (
+                <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl flex items-center justify-between">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">Uang Diterima (Rp)</label>
-                    <input
-                      type="number"
-                      value={amountReceived}
-                      onChange={(e) => setAmountReceived(e.target.value)}
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
-                      placeholder="100000"
-                      min="0"
-                    />
+                    <span className="text-xs font-bold text-emerald-900 block">Metode Pembayaran</span>
+                    <span className="text-[11px] text-emerald-700 font-medium">Aplikasi Gojek (Non-Tunai / Sudah Dibayar Konsumen)</span>
                   </div>
+                  <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider">
+                    Lunas
+                  </span>
+                </div>
+              ) : (
+                <>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">Kembalian</label>
-                    <div className="w-full bg-slate-50/30 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold text-sm h-[38px] flex items-center truncate">
-                      {changeVal >= 0 ? formatRupiah(changeVal) : "Kurang"}
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Metode Pembayaran</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {["cash", "qris", "transfer"].map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setPaymentMethod(method)}
+                          className={`py-2 rounded-xl text-xs font-bold border capitalize transition-all cursor-pointer ${
+                            paymentMethod === method
+                              ? "bg-orange-500/10 border-orange-500 text-orange-600 font-extrabold"
+                              : "bg-slate-50/50 border-slate-200 text-slate-500 hover:text-slate-800"
+                          }`}
+                        >
+                          {method}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </div>
+
+                  {/* Cash payment received */}
+                  {paymentMethod === "cash" && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">Uang Diterima (Rp)</label>
+                        <input
+                          type="number"
+                          value={amountReceived}
+                          onChange={(e) => setAmountReceived(e.target.value)}
+                          className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
+                          placeholder="100000"
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">Kembalian</label>
+                        <div className="w-full bg-slate-50/30 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold text-sm h-[38px] flex items-center truncate">
+                          {changeVal >= 0 ? formatRupiah(changeVal) : "Kurang"}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Bill Details */}
@@ -888,32 +1111,66 @@ export default function OrdersPage() {
                   </div>
                 )}
                 <div className="flex justify-between border-t border-slate-200 pt-2 text-sm font-extrabold text-slate-800">
-                  <span>Total Tagihan</span>
-                  <span className="text-orange-500 text-base">{formatRupiah(grandTotal)}</span>
+                  <span>Total Tagihan {orderType === "gofood" && "(GoFood)"}</span>
+                  <span className={orderType === "gofood" ? "text-emerald-600 text-base" : "text-orange-500 text-base"}>
+                    {formatRupiah(grandTotal)}
+                  </span>
                 </div>
+
+                {/* GoFood Estimated Commission & Net Payout */}
+                {orderType === "gofood" && (
+                  <div className="pt-2 border-t border-emerald-200/80 space-y-1 text-emerald-800 bg-emerald-50/60 p-2.5 rounded-lg">
+                    <div className="flex justify-between text-[11px]">
+                      <span>Potongan Komisi GoFood ({settings?.gofoodCommissionPercent || 20}%):</span>
+                      <span className="font-semibold text-rose-600">
+                        -{formatRupiah(Math.round((grandTotal * parseFloat(settings?.gofoodCommissionPercent?.toString() || "20")) / 100))}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-bold text-xs pt-1 border-t border-emerald-200">
+                      <span>Estimasi Bersih Masuk Rekening:</span>
+                      <span className="text-emerald-700">
+                        {formatRupiah(grandTotal - Math.round((grandTotal * parseFloat(settings?.gofoodCommissionPercent?.toString() || "20")) / 100))}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* DUAL CHECKOUT ACTION BUTTONS: OPEN BILL vs IMMEDIATE CHECKOUT */}
               <div className="space-y-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={(e) => handleCheckout(e, "open")}
-                  disabled={loading || cart.length === 0 || hasStockError}
-                  className="w-full bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-xl py-3 font-bold active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-xs disabled:opacity-50"
-                >
-                  <ChefHat className="w-4 h-4 text-amber-600" />
-                  Simpan Meja & Kirim Dapur (Open Bill)
-                </button>
+                {orderType === "gofood" ? (
+                  <button
+                    type="button"
+                    onClick={(e) => handleCheckout(e, "paid")}
+                    disabled={loading || cart.length === 0 || hasStockError}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-xl py-3.5 font-bold shadow-md shadow-emerald-600/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>🛵</span>}
+                    Proses Pesanan GoFood (Kirim Dapur & Cetak)
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => handleCheckout(e, "open")}
+                      disabled={loading || cart.length === 0 || hasStockError}
+                      className="w-full bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-xl py-3 font-bold active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
+                    >
+                      <ChefHat className="w-4 h-4 text-amber-600" />
+                      Simpan Meja & Kirim Dapur (Open Bill)
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={(e) => handleCheckout(e, "paid")}
-                  disabled={loading || cart.length === 0 || hasStockError || (paymentMethod === "cash" && changeVal < 0)}
-                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white rounded-xl py-3.5 font-bold shadow-md shadow-orange-500/10 active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                  Bayar Sekarang (Lunas)
-                </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleCheckout(e, "paid")}
+                      disabled={loading || cart.length === 0 || hasStockError || (paymentMethod === "cash" && changeVal < 0)}
+                      className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white rounded-xl py-3.5 font-bold shadow-md shadow-orange-500/10 active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                      Bayar Sekarang (Lunas)
+                    </button>
+                  </>
+                )}
               </div>
 
               {checkoutError && (
@@ -1110,7 +1367,19 @@ export default function OrdersPage() {
                   {filteredHistory.map((order: any) => (
                     <tr key={order.id} className="hover:bg-orange-50/50 transition-all">
                       <td className="px-6 py-4.5">
-                        <div className="font-semibold text-slate-800">{order.orderNumber}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-slate-800">{order.orderNumber}</span>
+                          {order.orderType === "gofood" && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
+                              🛵 GoFood {order.onlineOrderId ? `#${order.onlineOrderId}` : ""}
+                            </span>
+                          )}
+                          {order.orderType === "takeaway" && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">
+                              🛍️ Bungkus
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] text-slate-500 mt-1 max-w-[200px] truncate">
                           {order.items.map((i: any) => `${i.productName} (${i.qty})`).join(", ")}
                         </div>
@@ -1295,9 +1564,21 @@ export default function OrdersPage() {
                   value={receiptWidth}
                   onChange={(e: any) => setReceiptWidth(e.target.value)}
                   className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600 focus:outline-none"
+                  title="Lebar Kertas Printer Thermal"
                 >
                   <option value="58">58mm</option>
                   <option value="80">80mm</option>
+                </select>
+                <select
+                  value={paperLengthMode}
+                  onChange={(e: any) => setPaperLengthMode(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600 focus:outline-none"
+                  title="Panjang Kertas (Cegah Kertas Keluar Panjang)"
+                >
+                  <option value="auto">Auto-Fit (Hemat)</option>
+                  <option value="80">Tinggi 80mm</option>
+                  <option value="110">Tinggi 110mm</option>
+                  <option value="140">Tinggi 140mm</option>
                 </select>
                 <button onClick={() => setPrintOrder(null)} className="p-1 text-slate-400 hover:text-slate-800">
                   <X className="w-4 h-4" />
@@ -1316,7 +1597,7 @@ export default function OrdersPage() {
                     : "text-slate-500 hover:text-slate-800"
                 }`}
               >
-                Struk Pelanggan
+                {printOrder.orderType === "gofood" ? "🛵 Slip GoFood (Kantong)" : "Struk Pelanggan"}
               </button>
               <button
                 type="button"
@@ -1367,6 +1648,48 @@ export default function OrdersPage() {
                     </div>
                     <div className="border-t border-dashed border-slate-400 my-2"></div>
                     <div className="text-[9px] text-slate-500 italic mt-1">--- Harap Segera Diproses ---</div>
+                  </div>
+                ) : printOrder.orderType === "gofood" ? (
+                  /* GOFOOD BAG / DRIVER SLIP PREVIEW */
+                  <div>
+                    <div className="text-center font-black text-sm uppercase tracking-wider border-b-2 border-slate-800 pb-1 mb-1">
+                      PESANAN GOFOOD
+                    </div>
+                    <div className="text-center font-black text-base bg-slate-100 py-1 rounded-md my-1 border border-dashed border-slate-400">
+                      {printOrder.onlineOrderId ? `#${printOrder.onlineOrderId}` : (printOrder.tableNo || "GOFOOD")}
+                    </div>
+                    <div className="space-y-0.5 text-[9px] mt-1.5">
+                      <div>No. POS: {printOrder.orderNumber}</div>
+                      <div>Waktu: {new Date(printOrder.date || new Date()).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}</div>
+                      <div>Driver / Plg: <b>{printOrder.customerName || "Driver Gojek"}</b></div>
+                      <div className="text-emerald-700 font-bold">Status: LUNAS VIA APLIKASI</div>
+                      <div>Kasir: {printOrder.cashierName || cashierName}</div>
+                    </div>
+
+                    <div className="border-t border-dashed border-slate-400 my-2"></div>
+                    <div className="text-[9px] font-bold text-center mb-1 text-slate-700">--- CEK ISI KANTONG ---</div>
+
+                    <div className="space-y-1">
+                      {printOrder.items?.map((i: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center py-1 border-b border-dotted border-slate-300">
+                          <span className="font-bold text-[11px]">[ ] {i.name || i.productName}</span>
+                          <span className="font-black text-xs">x{i.qty}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="border-t border-dashed border-slate-400 my-2"></div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-extrabold text-[12px]">
+                        <span>TOTAL TAGIHAN:</span>
+                        <span>{formatRupiah(parseFloat(printOrder.grandTotal?.toString() || printOrder.revenueTotal?.toString() || "0"))}</span>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-dashed border-slate-400 my-2.5"></div>
+                    <div className="text-center text-[9px] font-medium text-slate-600">Tempelkan di Kantong / Serahkan Driver</div>
+                    <div className="text-center text-[8px] text-slate-400 mt-0.5">--- Taichan POS Online ---</div>
                   </div>
                 ) : (
                   /* CUSTOMER RECEIPT PREVIEW */
@@ -1471,7 +1794,7 @@ export default function OrdersPage() {
                 onClick={handleTriggerPrint}
                 className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-md text-sm transition-all"
               >
-                <Printer className="w-4 h-4" /> Cetak {printMode === "kot" ? "KOT" : "Struk"}
+                <Printer className="w-4 h-4" /> Cetak {printMode === "kot" ? "KOT" : (printOrder.orderType === "gofood" ? "Slip GoFood" : "Struk")}
               </button>
             </div>
           </div>

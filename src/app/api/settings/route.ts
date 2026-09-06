@@ -34,6 +34,7 @@ export async function POST(req: Request) {
     // Parse rounding settings
     if (body.roundingEnabled !== undefined) body.roundingEnabled = !!body.roundingEnabled;
     if (body.roundingNearest !== undefined) body.roundingNearest = parseFloat(body.roundingNearest).toString();
+    if (body.gofoodCommissionPercent !== undefined) body.gofoodCommissionPercent = parseFloat(body.gofoodCommissionPercent).toString();
     
     const settings = await db.query.businessSettings.findFirst();
     let updated;

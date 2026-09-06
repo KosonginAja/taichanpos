@@ -55,6 +55,7 @@ export async function GET() {
 
       const yieldQtyVal = parseFloat(prod.yieldQty.toString());
       const sellPriceVal = parseFloat(prod.sellPrice.toString());
+      const gofoodPriceVal = prod.gofoodPrice ? parseFloat(prod.gofoodPrice.toString()) : null;
       const hppPerPorsi = yieldQtyVal > 0 ? totalRecipeCost / yieldQtyVal : 0;
       const margin = sellPriceVal - hppPerPorsi;
       const marginPercent = sellPriceVal > 0 ? (margin / sellPriceVal) * 100 : 0;
@@ -63,6 +64,7 @@ export async function GET() {
         id: prod.id,
         name: prod.name,
         sellPrice: sellPriceVal,
+        gofoodPrice: gofoodPriceVal,
         yieldQty: yieldQtyVal,
         currentStock: parseFloat(prod.currentStock?.toString() || "0"),
         minStock: parseFloat(prod.minStock?.toString() || "0"),
@@ -91,7 +93,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
     }
 
-    const { name, sellPrice, yieldQty, isActive, minStock, fulfillmentType, recipes } = await req.json();
+    const { name, sellPrice, gofoodPrice, yieldQty, isActive, minStock, fulfillmentType, recipes } = await req.json();
 
     if (!name || sellPrice === undefined || yieldQty === undefined || !recipes || !Array.isArray(recipes)) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -108,6 +110,7 @@ export async function POST(req: Request) {
         .values({
           name,
           sellPrice: sellPrice.toString(),
+          gofoodPrice: gofoodPrice ? gofoodPrice.toString() : null,
           yieldQty: yieldQty.toString(),
           minStock: minStock !== undefined ? minStock.toString() : "0",
           fulfillmentType: fulfillmentType || "make_to_order",

@@ -27,8 +27,9 @@ interface Order {
   id: number;
   orderNumber: string;
   date: string;
-  orderType: "dine_in" | "takeaway" | "delivery";
+  orderType: "dine_in" | "takeaway" | "delivery" | "gofood";
   tableNo: string | null;
+  onlineOrderId?: string | null;
   customerName: string | null;
   status: "open" | "paid" | "cancelled";
   kitchenStatus: "pending" | "preparing" | "ready" | "served";
@@ -175,17 +176,28 @@ export default function KitchenDisplayPage() {
 
   // Print KOT
   const handlePrintKot = (order: Order) => {
-    const paperWidth = "72mm";
+    const paperWidth = "48mm";
+    const numItems = (order.items || []).length;
+    const targetHeightMm = Math.max(55, Math.ceil(52 + (numItems * 7.5)));
+
     const itemsHtml = order.items
       .map(
-        (i) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dotted #ccc;font-size:14px">
+        (i) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted #ccc;font-size:12px">
           <span style="font-weight:bold">${i.productName}</span>
-          <span style="font-size:16px;font-weight:900">x${i.qty}</span>
+          <span style="font-size:14px;font-weight:900">x${i.qty}</span>
         </div>`
       )
       .join("");
 
-    const divider = `<div style="border-top:1px dashed #444;margin:5px 0;"></div>`;
+    const divider = `<div style="border-top:1px dashed #444;margin:3px 0;"></div>`;
+    const orderTitle = order.orderType === "gofood"
+      ? (order.onlineOrderId ? `#${order.onlineOrderId}` : (order.tableNo || "GOFOOD ONLINE"))
+      : (order.tableNo || "ANTREAN");
+
+    const orderTypeLabel = order.orderType === "gofood"
+      ? "🛵 GOFOOD ONLINE"
+      : (order.orderType === "takeaway" ? "BUNGKUS / TAKEAWAY" : "MAKAN DI TEMPAT");
+
     const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
@@ -193,26 +205,26 @@ export default function KitchenDisplayPage() {
   <title>KOT ${order.orderNumber}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    @page { size: ${paperWidth} auto; margin: 2mm; }
-    html, body { width: ${paperWidth}; background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 12px; }
-    body { padding: 3mm; }
+    @page { size: ${paperWidth} ${targetHeightMm}mm; margin: 0; }
+    html, body { width: ${paperWidth}; background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.25; }
+    body { padding: 1.5mm 1mm; }
   </style>
 </head>
 <body>
-  <div style="text-align:center;font-weight:900;font-size:16px;border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:6px">TIKET DAPUR (KOT)</div>
-  <div style="font-size:14px;font-weight:900;text-transform:uppercase;margin-bottom:3px">${order.tableNo || "ANTREAN"}</div>
-  <div style="font-size:11px;color:#333;margin-bottom:4px">
-    <span>Tipe: <b>${order.orderType === "takeaway" ? "BUNGKUS / TAKEAWAY" : "MAKAN DI TEMPAT"}</b></span>
+  <div style="text-align:center;font-weight:900;font-size:13px;border-bottom:2px solid #000;padding-bottom:2px;margin-bottom:3px">TIKET DAPUR (KOT)</div>
+  <div style="font-size:13px;font-weight:900;text-transform:uppercase;margin-bottom:2px">${orderTitle}</div>
+  <div style="font-size:9px;color:#333;margin-bottom:3px">
+    <span>Tipe: <b>${orderTypeLabel}</b></span>
   </div>
-  <div style="font-size:10px;line-height:1.5">
+  <div style="font-size:9px;line-height:1.4">
     <div>No: ${order.orderNumber}</div>
     <div>Waktu: ${new Date(order.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</div>
-    ${order.customerName ? `<div>Pelanggan: ${order.customerName}</div>` : ""}
+    ${order.customerName ? `<div>${order.orderType === "gofood" ? "Driver/Plg" : "Pelanggan"}: ${order.customerName}</div>` : ""}
   </div>
   ${divider}
-  <div style="margin:6px 0">${itemsHtml}</div>
+  <div style="margin:4px 0">${itemsHtml}</div>
   ${divider}
-  <div style="text-align:center;font-size:10px;color:#555;margin-top:5px">--- Layar Dapur (KDS) Reprint ---</div>
+  <div style="text-align:center;font-size:8.5px;color:#555;margin-top:3px">--- Layar Dapur (KDS) Reprint ---</div>
 </body>
 </html>`;
 
@@ -455,11 +467,15 @@ export default function KitchenDisplayPage() {
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         {/* Table / Order Type Badge */}
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
-                          order.orderType === "takeaway"
+                          order.orderType === "gofood"
+                            ? "bg-green-950/80 border border-green-600/70 text-green-300"
+                            : order.orderType === "takeaway"
                             ? "bg-purple-950/80 border border-purple-700/60 text-purple-300"
                             : "bg-amber-500/20 border border-amber-500/40 text-amber-300"
                         }`}>
-                          {order.tableNo || (order.orderType === "takeaway" ? "Bungkus" : "Meja -")}
+                          {order.orderType === "gofood"
+                            ? `🛵 GoFood #${order.onlineOrderId || order.tableNo || ""}`
+                            : (order.tableNo || (order.orderType === "takeaway" ? "Bungkus" : "Meja -"))}
                         </span>
 
                         {/* Bill Status */}

@@ -42,6 +42,7 @@ export default function ProductsPage() {
   // Form states
   const [name, setName] = useState("");
   const [sellPrice, setSellPrice] = useState("");
+  const [gofoodPrice, setGofoodPrice] = useState("");
   const [yieldQty, setYieldQty] = useState("1");
   const [minStock, setMinStock] = useState("0");
   const [recipeRows, setRecipeRows] = useState<RecipeRow[]>([
@@ -61,6 +62,7 @@ export default function ProductsPage() {
     setSelectedProd(null);
     setName("");
     setSellPrice("");
+    setGofoodPrice("");
     setYieldQty("1");
     setMinStock("0");
     setRecipeRows([{ ingredientId: 0, qty: "" }]);
@@ -74,6 +76,7 @@ export default function ProductsPage() {
     setSelectedProd(prod);
     setName(prod.name);
     setSellPrice(prod.sellPrice.toString());
+    setGofoodPrice(prod.gofoodPrice ? prod.gofoodPrice.toString() : "");
     setYieldQty(prod.yieldQty.toString());
     setMinStock(prod.minStock ? prod.minStock.toString() : "0");
     
@@ -152,6 +155,7 @@ export default function ProductsPage() {
     const payload = {
       name,
       sellPrice: parseFloat(sellPrice),
+      gofoodPrice: gofoodPrice ? parseFloat(gofoodPrice) : null,
       yieldQty: parseFloat(yieldQty),
       minStock: parseFloat(minStock),
       recipes: cleanRecipes.map((r) => ({
@@ -282,7 +286,19 @@ export default function ProductsPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4.5 font-medium text-slate-800">{formatRupiah(prod.sellPrice)}</td>
+                    <td className="px-6 py-4.5 font-medium text-slate-800">
+                      <div>{formatRupiah(prod.sellPrice)}</div>
+                      {prod.gofoodPrice ? (
+                        <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
+                          <span>🛵 GF: {formatRupiah(prod.gofoodPrice)}</span>
+                          <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1 py-0.2 rounded">
+                            +{Math.round(((prod.gofoodPrice - prod.sellPrice) / prod.sellPrice) * 100)}%
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-slate-400 mt-0.5">GF: Belum diatur</div>
+                      )}
+                    </td>
                     <td className="px-6 py-4.5 text-slate-600">{formatRupiah(prod.hppPerPorsi)}</td>
                     <td className="px-6 py-4.5 font-semibold text-emerald-400">{formatRupiah(prod.margin)}</td>
                     <td className="px-6 py-4.5">
@@ -396,14 +412,14 @@ export default function ProductsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Harga Jual per Porsi (Rp)</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Harga Jual Offline (Rp)</label>
                   <input
                     type="number"
                     required
                     value={sellPrice}
                     onChange={(e) => setSellPrice(e.target.value)}
                     className="w-full bg-slate-50/40 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-orange-500"
-                    placeholder="15000"
+                    placeholder="20000"
                     min="0"
                   />
                 </div>
@@ -420,6 +436,72 @@ export default function ProductsPage() {
                     min="0.001"
                     step="any"
                   />
+                </div>
+              </div>
+
+              {/* GoFood Price & Markup Section */}
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="block text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                    <span>🛵 Harga Khusus GoFood / Online (Rp)</span>
+                    <span className="text-[10px] font-normal text-emerald-700 hidden sm:inline">(Mengimbangi potongan komisi platform)</span>
+                  </label>
+
+                  {/* Auto Markup Quick Buttons */}
+                  {sellPrice && parseFloat(sellPrice) > 0 && (
+                    <div className="flex items-center gap-1.5 text-[10px]">
+                      <span className="text-emerald-700 font-medium">Auto-Markup:</span>
+                      <button
+                        type="button"
+                        onClick={() => setGofoodPrice(Math.round((parseFloat(sellPrice) * 1.2) / 500) * 500 + "")}
+                        className="px-2 py-0.5 bg-white border border-emerald-300 rounded font-bold text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                      >
+                        +20%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGofoodPrice(Math.round((parseFloat(sellPrice) * 1.25) / 500) * 500 + "")}
+                        className="px-2 py-0.5 bg-emerald-600 border border-emerald-600 rounded font-bold text-white hover:bg-emerald-700 cursor-pointer"
+                      >
+                        +25%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGofoodPrice(Math.round((parseFloat(sellPrice) * 1.3) / 500) * 500 + "")}
+                        className="px-2 py-0.5 bg-white border border-emerald-300 rounded font-bold text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                      >
+                        +30%
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+                  <input
+                    type="number"
+                    value={gofoodPrice}
+                    onChange={(e) => setGofoodPrice(e.target.value)}
+                    className="w-full bg-white border border-emerald-300 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                    placeholder={sellPrice ? `${Math.round(parseFloat(sellPrice) * 1.25)}` : "Kosongkan jika sama dengan offline"}
+                    min="0"
+                  />
+
+                  {gofoodPrice && parseFloat(gofoodPrice) > 0 && sellPrice && parseFloat(sellPrice) > 0 && (
+                    <div className="text-xs text-emerald-900 bg-white border border-emerald-200 rounded-lg p-2 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold">
+                          Markup: +{Math.round(((parseFloat(gofoodPrice) - parseFloat(sellPrice)) / parseFloat(sellPrice)) * 100)}%
+                        </span>
+                        <span className="text-[11px] text-emerald-600 block">
+                          Selisih: +{formatRupiah(parseFloat(gofoodPrice) - parseFloat(sellPrice))}
+                        </span>
+                      </div>
+                      <div className="text-right text-[11px]">
+                        <span className="text-slate-500 block">Est. Bersih (potong 20%):</span>
+                        <span className="font-bold text-emerald-700">{formatRupiah(parseFloat(gofoodPrice) * 0.8)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

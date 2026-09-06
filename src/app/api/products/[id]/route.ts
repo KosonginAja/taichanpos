@@ -14,7 +14,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
     }
 
-    const { name, sellPrice, yieldQty, isActive, minStock, fulfillmentType, recipes } = await req.json();
+    const { name, sellPrice, gofoodPrice, yieldQty, isActive, minStock, fulfillmentType, recipes } = await req.json();
 
     // Check if product exists
     const current = await db.query.products.findFirst({
@@ -31,6 +31,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       if (sellPrice !== undefined) {
         if (parseFloat(sellPrice) < 0) throw new Error("Sell price cannot be negative");
         updateData.sellPrice = sellPrice.toString();
+      }
+      if (gofoodPrice !== undefined) {
+        if (gofoodPrice === null || gofoodPrice === "") {
+          updateData.gofoodPrice = null;
+        } else {
+          if (parseFloat(gofoodPrice) < 0) throw new Error("GoFood price cannot be negative");
+          updateData.gofoodPrice = gofoodPrice.toString();
+        }
       }
       if (yieldQty !== undefined) {
         if (parseFloat(yieldQty) <= 0) throw new Error("Yield must be greater than zero");

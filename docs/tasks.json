@@ -747,5 +747,19 @@
     "note": "Memangkas tahapan tombol masak berulang (Mulai Masak -> Siap Saji -> Sajikan) menjadi satu tombol cepat 'Pesanan Telah Dibuat' (1-tap served). Menyederhanakan navigasi menjadi 2 tab bersih ('Antrean Masak' & 'Selesai Hari Ini'), mempertahankan checklist item masak per porsi, cetak KOT, dan tombol pemulihan pesanan jika tidak sengaja tertekan.",
     "date": "2026-09-06",
     "id": "T107"
+  },
+  {
+    "task": "Solusi Masalah Cetak Thermal Printer Rongta 58mm (Kertas Keluar Terlalu Panjang) & Auto-Fit Height Calculation",
+    "status": "done",
+    "note": "Menambahkan kalkulasi tinggi kertas otomatis dinamis dalam milimeter (@page size 48mm Xmm) berbasis jumlah item dan mode panjang kertas (Auto-Fit / 80mm / 110mm / 140mm) untuk mencegah printer thermal VSC Rongta 58mm mengeluarkan kertas berlebih (default 210mm dari driver Windows/Chrome) baik pada struk kasir, slip kantong GoFood, maupun tiket dapur (KOT).",
+    "date": "2026-09-06",
+    "id": "T108"
+  },
+  {
+    "task": "Integrasi Pesanan Online GoFood, Dual Pricing Catalog (Markup 20-30%), Slip Kantong Pengiriman & Transparansi Bagi Hasil Investor",
+    "status": "done",
+    "note": "Menambahkan skema harga khusus GoFood di katalog produk dengan kalkulator markup instan (+20%, +25%, +30%), tombol kanal pesanan GoFood di kasir dengan input nomor pesanan online & nama driver, format cetak slip kantong GoFood dengan checklist [ ] item packing, pemotongan otomatis komisi platform (20%) pada pencatatan kas/bank sehingga hanya net payout riil yang masuk pembagian laba investor, serta transparansi rincian omzet bruto vs komisi vs pencairan bersih di Laporan Distribusi Bulanan & ekspor PDF.",
+    "date": "2026-09-06",
+    "id": "T109"
   }
 ]

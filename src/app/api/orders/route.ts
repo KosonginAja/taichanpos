@@ -54,6 +54,9 @@ export async function GET(req: Request) {
         roundingAdjustment: parseFloat(order.roundingAdjustment?.toString() || "0"),
         grandTotal: parseFloat(order.grandTotal?.toString() || "0") > 0 ? parseFloat(order.grandTotal.toString()) : parseFloat(order.revenueTotal.toString()),
         profitTotal: parseFloat(order.profitTotal.toString()),
+        platformCommission: parseFloat(order.platformCommission?.toString() || "0"),
+        netPayout: parseFloat(order.netPayout?.toString() || order.grandTotal?.toString() || order.revenueTotal.toString()),
+        onlineOrderId: order.onlineOrderId || null,
         amountReceived: order.amountReceived ? parseFloat(order.amountReceived.toString()) : null,
         changeAmount: order.changeAmount ? parseFloat(order.changeAmount.toString()) : null,
         items: items.map((i) => ({
@@ -92,6 +95,8 @@ export async function POST(req: Request) {
       serviceChargeAmount,
       orderType,
       tableNo,
+      onlineOrderId,
+      platformCommission: customPlatformComm,
       status: orderStatusInput,
     } = await req.json();
 
@@ -267,12 +272,14 @@ export async function POST(req: Request) {
           where: eq(products.id, item.productId),
         });
         if (!prod) throw new Error("Product missing");
-        subtotal += parseFloat(item.qty) * parseFloat(prod.sellPrice.toString());
+        const itemPrice = item.sellPrice !== undefined && item.sellPrice !== null
+          ? parseFloat(item.sellPrice.toString())
+          : parseFloat(prod.sellPrice.toString());
+        subtotal += parseFloat(item.qty) * itemPrice;
         hppTotal += parseFloat(item.qty) * productHpps[item.productId];
       }
 
       const revenueTotal = subtotal - discountVal + taxAmountVal + serviceChargeAmountVal;
-      const profitTotal = revenueTotal - hppTotal;
 
       const bs = await tx.query.businessSettings.findFirst();
       const roundingEnabled = bs?.roundingEnabled || false;
@@ -285,20 +292,41 @@ export async function POST(req: Request) {
         roundingAdjustment = grandTotal - revenueTotal;
       }
 
-      const changeAmount = isPaid && amountReceivedVal !== null ? amountReceivedVal - grandTotal : null;
+      // GoFood commission & net payout calculation
+      const isGoFood = (orderType || "dine_in") === "gofood";
+      const defaultCommPct = parseFloat(bs?.gofoodCommissionPercent?.toString() || "20");
+      let platformCommission = 0;
+      let netPayout = grandTotal;
+
+      if (isGoFood) {
+        if (customPlatformComm !== undefined && customPlatformComm !== null) {
+          platformCommission = parseFloat(customPlatformComm.toString());
+        } else {
+          platformCommission = Math.round((grandTotal * defaultCommPct) / 100);
+        }
+        netPayout = grandTotal - platformCommission;
+      }
+
+      // Profit total: for GoFood, the real net revenue received is netPayout, so profit is netPayout - hppTotal
+      const profitTotal = isGoFood ? (netPayout - hppTotal) : (revenueTotal - hppTotal);
+
+      const changeAmount = isPaid && paymentMethod === "cash" && amountReceivedVal !== null ? amountReceivedVal - grandTotal : null;
 
       if (isPaid && paymentMethod === "cash" && amountReceivedVal !== null && changeAmount !== null && changeAmount < 0) {
         throw new Error("Uang yang diterima kurang dari total pembayaran.");
       }
 
       // 6. Insert Order
-      const actualPaymentMethod = isPaid ? paymentMethod : (paymentMethod || "pending");
+      const actualPaymentMethod = isPaid ? (isGoFood ? (paymentMethod || "gofood") : paymentMethod) : (paymentMethod || "pending");
       const [newOrder] = await tx
         .insert(orders)
         .values({
           orderNumber,
           orderType: orderType || "dine_in",
           tableNo: tableNo || null,
+          onlineOrderId: onlineOrderId || null,
+          platformCommission: platformCommission.toString(),
+          netPayout: netPayout.toString(),
           subtotal: subtotal.toString(),
           discount: discountVal.toString(),
           taxAmount: taxAmountVal.toString(),
@@ -325,7 +353,9 @@ export async function POST(req: Request) {
         if (!prod) throw new Error("Product missing");
 
         const qtyVal = parseFloat(item.qty);
-        const sellPriceVal = parseFloat(prod.sellPrice.toString());
+        const sellPriceVal = item.sellPrice !== undefined && item.sellPrice !== null
+          ? parseFloat(item.sellPrice.toString())
+          : parseFloat(prod.sellPrice.toString());
         const hppPerUnitVal = productHpps[item.productId];
         const itemHppTotal = qtyVal * hppPerUnitVal;
         const itemRevenueTotal = qtyVal * sellPriceVal;
@@ -344,12 +374,15 @@ export async function POST(req: Request) {
 
       // 8. Auto-insert kas masuk & pocket_transactions ONLY if already paid
       if (isPaid) {
+        const cashAmountToRecord = isGoFood ? netPayout : grandTotal;
         await tx.insert(cashTransactions).values({
           type: "in",
           category: "Penjualan",
           isOperational: false, // Revenue is tracked separately via orders, not double-counted in P&L expenses
-          description: `Penjualan Order ${orderNumber}`,
-          amount: grandTotal.toString(),
+          description: isGoFood
+            ? `Penjualan GoFood ${orderNumber} (Bruto: Rp ${grandTotal.toLocaleString("id-ID")}, Komisi: -Rp ${platformCommission.toLocaleString("id-ID")})`
+            : `Penjualan Order ${orderNumber}`,
+          amount: cashAmountToRecord.toString(),
           date: now,
           sourceType: "order",
           sourceRefId: orderNumber,
