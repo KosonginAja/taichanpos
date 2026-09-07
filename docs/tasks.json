@@ -775,5 +775,12 @@
     "note": "Menambahkan fitur pemilihan rentang tanggal fleksibel di /dashboard/reports/monthly-distribution dengan tombol shortcut instan: 'Bulan Lalu (Tutup Buku)' khusus sebelum tanggal 5, 'Bulan Ini', 'Pilih Bulan', dan 'Rentang Tanggal Bebas' (input tanggal mulai & tanggal selesai). Memperbarui judul periode di antarmuka laporan dan dokumen PDF resmi yang diekspor agar mencantumkan rentang tanggal yang dipilih secara akurat.",
     "date": "2026-09-07",
     "id": "T111"
+  },
+  {
+    "task": "Perbaikan Tampilan Modal Kas Masuk & Kas Keluar di /dashboard/cash agar Responsif dan Tidak Memenuhi/Memotong Layar",
+    "status": "done",
+    "note": "Mendesain ulang modal transaksi kas di /dashboard/cash menjadi dialog proporsional (max-w-lg, max-h-[90vh]), menambahkan tombol silang (X) dan header fixed, menata form input menjadi 2 kolom grid yang padat (Tanggal & Kategori sejajar, Jumlah & Metode Pembayaran Tunai/Non-Tunai sejajar), mengaktifkan scroll internal pada isi form jika layar kecil, serta mematok (sticky) tombol Batal dan Simpan Transaksi di bagian footer bawah agar selalu terlihat dan tidak terpotong di layar laptop/tablet.",
+    "date": "2026-09-07",
+    "id": "T112"
   }
 ]

@@ -11,6 +11,7 @@ import {
   CheckCircle,
   Filter,
   Wallet,
+  X,
 } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -279,115 +280,225 @@ export default function CashPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
-              <h3 className="text-lg font-bold text-slate-900">Catat Transaksi Kas</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                {txType === "in" ? (
+                  <ArrowUpCircle className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <ArrowDownCircle className="w-5 h-5 text-rose-600" />
+                )}
+                Catat Transaksi Kas
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-5 space-y-3.5">
               {/* Toggle In/Out */}
               <div className="grid grid-cols-2 gap-2">
                 {(["in", "out"] as const).map((t) => (
-                  <button key={t} type="button" onClick={() => handleTypeToggle(t)}
-                    className={`py-2.5 rounded-xl text-sm font-bold border transition-all ${txType === t
-                      ? t === "in" ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-red-500/10 border-red-500 text-red-400"
-                      : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-600"
-                    }`}>
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => handleTypeToggle(t)}
+                    className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      txType === t
+                        ? t === "in"
+                          ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 shadow-xs"
+                          : "bg-rose-500/10 border-rose-500 text-rose-600 shadow-xs"
+                        : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
                     {t === "in" ? "↑ Kas Masuk" : "↓ Kas Keluar"}
                   </button>
                 ))}
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Tanggal</label>
-                <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500" />
-              </div>
+              {/* 2-Column: Tanggal & Kategori */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal</label>
+                  <input
+                    type="date"
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-orange-500"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Kategori</label>
-                <select value={category} onChange={(e) => handleCategoryChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500">
-                  {categoryList.map((c) => <option key={c.label} value={c.label}>{c.label}</option>)}
-                </select>
-                {category === "Gaji" && (
-                  <p className="text-[10px] text-amber-600 mt-1 font-semibold">
-                    ⚠️ Kategori Gaji hanya untuk staf/karyawan eksternal. Sesuai kontrak investor, kompensasi Owner/Mitra diambil dari profit sharing.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3 bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3">
-                <input type="checkbox" id="isOp" checked={isOperational} onChange={(e) => setIsOperational(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
-                <label htmlFor="isOp" className="text-sm text-slate-600 cursor-pointer">
-                  Hitung ke Laba Rugi <span className="text-slate-500 text-xs">(isOperational)</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Deskripsi</label>
-                <input type="text" required placeholder={txType === "in" ? "Misal: Modal awal dari owner" : "Misal: Gaji karyawan Juli"} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Jumlah (Rp)</label>
-                <input type="number" step="any" min="0" required placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Catatan (Opsional)</label>
-                <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500" />
-              </div>
-
-              {/* Payment Group — Wajib Diisi */}
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Dibayar dengan <span className="text-red-400">*</span></label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setPaymentGroup("tunai")}
-                    className={`py-2.5 rounded-xl text-sm font-bold border transition-all ${
-                      paymentGroup === "tunai"
-                        ? "bg-orange-500/10 border-orange-500 text-orange-600"
-                        : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700"
-                    }`}>
-                    💵 Tunai
-                  </button>
-                  <button type="button" onClick={() => setPaymentGroup("non_tunai")}
-                    className={`py-2.5 rounded-xl text-sm font-bold border transition-all ${
-                      paymentGroup === "non_tunai"
-                        ? "bg-blue-500/10 border-blue-500 text-blue-600"
-                        : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700"
-                    }`}>
-                    💳 Non-Tunai
-                  </button>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Kategori</label>
+                  <select
+                    value={category}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-orange-500"
+                  >
+                    {categoryList.map((c) => (
+                      <option key={c.label} value={c.label}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
+              {category === "Gaji" && (
+                <p className="text-[10px] text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200 font-medium">
+                  ⚠️ Kategori Gaji hanya untuk staf/karyawan eksternal. Kompensasi Pengelola/Owner diambil dari bagi hasil laba.
+                </p>
+              )}
+
+              {/* Deskripsi */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Deskripsi <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={txType === "in" ? "Misal: Modal tambahan dari owner" : "Misal: Beli gas LPG 3 tabung / Listrik"}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              {/* 2-Column: Jumlah (Rp) & Metode Pembayaran */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Jumlah (Rp) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    required
+                    placeholder="0"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Dibayar dengan <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 h-[36px]">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentGroup("tunai")}
+                      className={`rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        paymentGroup === "tunai"
+                          ? "bg-orange-500 text-white border-orange-500 shadow-xs"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      💵 Tunai
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentGroup("non_tunai")}
+                      className={`rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        paymentGroup === "non_tunai"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      💳 Non-Tunai
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Checkbox isOperational */}
+              <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                <input
+                  type="checkbox"
+                  id="isOp"
+                  checked={isOperational}
+                  onChange={(e) => setIsOperational(e.target.checked)}
+                  className="w-4 h-4 text-orange-600 rounded cursor-pointer"
+                />
+                <label htmlFor="isOp" className="text-xs text-slate-700 cursor-pointer select-none">
+                  Hitung ke Biaya Operasional Laba Rugi <span className="text-slate-400 text-[10px]">(isOperational)</span>
+                </label>
+              </div>
+
+              {/* Ambil dari kantong kas (jika out) */}
               {txType === "out" && pockets && pockets.length > 0 && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Ambil dari Kantong Kas <span className="text-slate-600">(Opsional)</span></label>
-                  <select value={pocketId ?? ""} onChange={(e) => setPocketId(e.target.value ? parseInt(e.target.value) : null)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-orange-500">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Ambil dari Kantong Kas <span className="text-slate-400 text-[11px]">(Opsional)</span>
+                  </label>
+                  <select
+                    value={pocketId ?? ""}
+                    onChange={(e) => setPocketId(e.target.value ? parseInt(e.target.value) : null)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-orange-500"
+                  >
                     <option value="">— Tidak dari kantong tertentu —</option>
                     {pockets.map((p: any) => (
-                      <option key={p.id} value={p.id}>{p.label} — Saldo: {formatRupiah(p.balance ?? 0)}</option>
+                      <option key={p.id} value={p.id}>
+                        {p.label} — Saldo: {formatRupiah(p.balance ?? 0)}
+                      </option>
                     ))}
                   </select>
                   {pocketId && pockets && (() => {
                     const selected = pockets.find((p: any) => p.id === pocketId);
                     return selected ? (
-                      <p className={`text-[11px] mt-1.5 font-medium ${(selected.balance ?? 0) <= 0 ? 'text-red-500' : 'text-slate-500'}`}>
-                        Saldo tersedia di kantong ini: <span className="font-bold">{formatRupiah(selected.balance ?? 0)}</span>
+                      <p className={`text-[11px] mt-1 font-medium ${(selected.balance ?? 0) <= 0 ? "text-rose-600" : "text-slate-500"}`}>
+                        Saldo kantong ini: <span className="font-bold">{formatRupiah(selected.balance ?? 0)}</span>
                         {(selected.balance ?? 0) <= 0 && " ⚠️ Saldo tidak mencukupi"}
                       </p>
                     ) : null;
                   })()}
-                  {!pocketId && <p className="text-[10px] text-slate-600 mt-1">Jika dipilih, kas keluar ini akan dicatat sebagai debit di kantong terkait.</p>}
                 </div>
               )}
 
-              {errorMsg && <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-xl">{errorMsg}</div>}
+              {/* Catatan Tambahan */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Catatan (Opsional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Catatan tambahan nota/bon..."
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-orange-500"
+                />
+              </div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-700 text-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors">Batal</button>
-                <button type="submit" disabled={loading} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 flex items-center justify-center transition-colors">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Simpan"}
+              {errorMsg && (
+                <div className="text-rose-600 text-xs bg-rose-50 border border-rose-200 p-2.5 rounded-xl font-medium">
+                  {errorMsg}
+                </div>
+              )}
+
+              {/* Footer action buttons */}
+              <div className="pt-2 border-t border-slate-100 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="w-1/3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-2/3 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs transition-all shadow-md shadow-orange-500/20 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Simpan Transaksi"}
                 </button>
               </div>
             </form>
