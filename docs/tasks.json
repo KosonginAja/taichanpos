@@ -768,5 +768,12 @@
     "note": "Membuat menu khusus 'Panduan Penggunaan' di sidebar navigasi yang dapat diakses oleh seluruh staf (kasir, koki, dan admin). Berisi panduan alur cepat SOP operasional harian (5 langkah buka sampai tutup toko), panduan detail langkah-demi-langkah per modul (Kasir Dine-In/Takeaway/Open Bill/GoFood/Pembatalan pesanan, Layar Dapur 1-Tap KDS, Gudang & AVCO Restock, Waste Spoilage Tracking, Stock Opname & Rekonsiliasi, Dual Pricing GoFood, Buku Kas & Pembagian Hasil Investor, serta panduan cetak thermal Rongta 58mm), real-time search tutorial, filter kategori, dan FAQ kendala operasional.",
     "date": "2026-09-07",
     "id": "T110"
+  },
+  {
+    "task": "Penambahan Pemilihan Tanggal Kustom & Preset Tutup Buku Sebelum Tanggal 5 pada Laporan Investor",
+    "status": "done",
+    "note": "Menambahkan fitur pemilihan rentang tanggal fleksibel di /dashboard/reports/monthly-distribution dengan tombol shortcut instan: 'Bulan Lalu (Tutup Buku)' khusus sebelum tanggal 5, 'Bulan Ini', 'Pilih Bulan', dan 'Rentang Tanggal Bebas' (input tanggal mulai & tanggal selesai). Memperbarui judul periode di antarmuka laporan dan dokumen PDF resmi yang diekspor agar mencantumkan rentang tanggal yang dipilih secara akurat.",
+    "date": "2026-09-07",
+    "id": "T111"
   }
 ]

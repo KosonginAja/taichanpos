@@ -26,21 +26,40 @@ export default function MonthlyDistributionPage() {
   const { data: userSession } = useSWR("/api/auth/me", fetcher);
   const isAdmin = userSession?.user?.role === "admin";
 
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1; // 1-indexed
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1; // 1-indexed
 
+  // Helper for local YYYY-MM-DD string
+  const toDateInputString = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const [dateFilterMode, setDateFilterMode] = useState<"month" | "custom">("month");
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
-  const getMonthDateRange = (year: number, month: number) => {
-    const start = new Date(year, month - 1, 1);
-    const startStr = start.toISOString().split("T")[0];
-    const end = new Date(year, month, 0); // Last day of month
-    const endStr = end.toISOString().split("T")[0];
-    return { startStr, endStr };
-  };
+  // Default custom range: 1st of current month until today
+  const [customStartDate, setCustomStartDate] = useState(
+    toDateInputString(new Date(currentYear, currentMonth - 1, 1))
+  );
+  const [customEndDate, setCustomEndDate] = useState(toDateInputString(today));
 
-  const { startStr, endStr } = getMonthDateRange(selectedYear, selectedMonth);
+  // Compute active startStr and endStr
+  let startStr = "";
+  let endStr = "";
+  if (dateFilterMode === "month") {
+    const start = new Date(selectedYear, selectedMonth - 1, 1);
+    const end = new Date(selectedYear, selectedMonth, 0); // last day
+    startStr = toDateInputString(start);
+    endStr = toDateInputString(end);
+  } else {
+    startStr = customStartDate || toDateInputString(new Date(currentYear, currentMonth - 1, 1));
+    endStr = customEndDate || toDateInputString(today);
+  }
 
   const { data, error, isLoading } = useSWR(
     isAdmin
@@ -99,6 +118,45 @@ export default function MonthlyDistributionPage() {
         }))
       : defaultDistributions;
 
+  const formatDateIndo = (dateStr: string) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    return date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  };
+
+  const periodDisplayLabel =
+    dateFilterMode === "month"
+      ? `${getMonthLabel(selectedMonth)} ${selectedYear} (${formatDateIndo(startStr)} s/d ${formatDateIndo(endStr)})`
+      : `${formatDateIndo(startStr)} s/d ${formatDateIndo(endStr)}`;
+
+  const selectCurrentMonth = () => {
+    setSelectedMonth(currentMonth);
+    setSelectedYear(currentYear);
+    setDateFilterMode("month");
+  };
+
+  const selectLastMonth = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    setSelectedMonth(d.getMonth() + 1);
+    setSelectedYear(d.getFullYear());
+    setDateFilterMode("month");
+  };
+
+  const dLast = new Date();
+  dLast.setMonth(dLast.getMonth() - 1);
+  const isLastMonthActive =
+    dateFilterMode === "month" &&
+    selectedMonth === dLast.getMonth() + 1 &&
+    selectedYear === dLast.getFullYear();
+
+  const isCurrentMonthActive =
+    dateFilterMode === "month" &&
+    selectedMonth === currentMonth &&
+    selectedYear === currentYear;
+
   const downloadPDF = () => {
     if (!data) return;
     const doc = new jsPDF();
@@ -110,7 +168,7 @@ export default function MonthlyDistributionPage() {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Periode Bulan: ${getMonthLabel(selectedMonth)} ${selectedYear}`, 14, 27);
+    doc.text(`Periode Laporan: ${periodDisplayLabel}`, 14, 27);
     doc.text(`Rentang Tanggal: ${startStr} s/d ${endStr}`, 14, 32);
     doc.line(14, 36, 196, 36);
 
@@ -189,10 +247,12 @@ export default function MonthlyDistributionPage() {
     doc.text("Pihak Pertama (Investor)", 20, y);
     doc.text("Pihak Kedua (Pengelola/Operator)", 125, y);
     y += 22;
-    doc.text("_______________________", 20, y);
-    doc.text("_______________________", 125, y);
+    const pdfFileName =
+      dateFilterMode === "month"
+        ? `Laporan_Distribusi_${getMonthLabel(selectedMonth)}_${selectedYear}.pdf`
+        : `Laporan_Distribusi_${startStr}_sd_${endStr}.pdf`;
 
-    doc.save(`Laporan_Distribusi_${getMonthLabel(selectedMonth)}_${selectedYear}.pdf`);
+    doc.save(pdfFileName);
   };
 
   if (!isAdmin && userSession) {
@@ -209,47 +269,144 @@ export default function MonthlyDistributionPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Percent className="w-6 h-6 text-orange-500" />
-              Laporan Distribusi & Bagi Hasil
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              Transparan
-            </span>
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                <Percent className="w-6 h-6 text-orange-500" />
+                Laporan Distribusi & Bagi Hasil
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Transparan
+              </span>
+            </div>
+            <p className="text-slate-500 text-xs mt-1">
+              Format laporan laba bersih & pembagian profit transparan untuk internal dan investor
+            </p>
           </div>
-          <p className="text-slate-500 text-xs mt-1">
-            Format laporan laba bersih & pembagian profit transparan untuk internal dan investor
-          </p>
         </div>
 
-        {/* Month Selector */}
-        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-2.5 shadow-xs">
-          <Calendar className="w-4 h-4 text-slate-400" />
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-            className="text-xs bg-transparent text-slate-700 font-bold focus:outline-none cursor-pointer"
-          >
-            {months.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="text-xs bg-transparent text-slate-700 font-bold focus:outline-none cursor-pointer border-l pl-2 border-slate-200"
-          >
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+        {/* Date Filter & Quick Presets Toolbar */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Presets buttons */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-orange-500" /> Periode Laporan:
+              </span>
+              <button
+                type="button"
+                onClick={selectLastMonth}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  isLastMonthActive
+                    ? "bg-orange-500 text-white shadow-xs"
+                    : "bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200"
+                }`}
+                title="Laporan bulan sebelumnya (cocok untuk laporan sebelum tgl 5)"
+              >
+                <span>⭐ Bulan Lalu (Tutup Buku)</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                  isLastMonthActive ? "bg-white/25 text-white" : "bg-amber-200 text-amber-900"
+                }`}>
+                  Tgl &lt;5
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={selectCurrentMonth}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isCurrentMonthActive
+                    ? "bg-orange-500 text-white shadow-xs"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200"
+                }`}
+              >
+                Bulan Ini
+              </button>
+              <button
+                type="button"
+                onClick={() => setDateFilterMode("month")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  dateFilterMode === "month" && !isCurrentMonthActive && !isLastMonthActive
+                    ? "bg-orange-500 text-white shadow-xs"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200"
+                }`}
+              >
+                Pilih Bulan
+              </button>
+              <button
+                type="button"
+                onClick={() => setDateFilterMode("custom")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  dateFilterMode === "custom"
+                    ? "bg-orange-500 text-white shadow-xs"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200"
+                }`}
+              >
+                Rentang Tanggal Bebas
+              </button>
+            </div>
+
+            {/* Inputs based on mode */}
+            <div className="flex items-center gap-2">
+              {dateFilterMode === "month" ? (
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs">
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                    className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer"
+                  >
+                    {months.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                    className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer border-l pl-2 border-slate-200"
+                  >
+                    {years.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap text-xs">
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                    <span className="text-slate-400 font-medium text-[11px]">Dari:</span>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer text-xs"
+                    />
+                  </div>
+                  <span className="text-slate-400 font-bold text-xs">s/d</span>
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                    <span className="text-slate-400 font-medium text-[11px]">Sampai:</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="text-[11px] text-slate-500 flex items-center gap-1.5 pt-1 border-t border-slate-100">
+            <span className="font-semibold text-slate-600">Rentang Tanggal Aktif:</span>
+            <span className="font-bold text-orange-600 font-mono">{startStr}</span>
+            <span>s/d</span>
+            <span className="font-bold text-orange-600 font-mono">{endStr}</span>
+            <span className="text-slate-400 hidden sm:inline">&bull; Klik 'Bulan Lalu (Tutup Buku)' jika membagikan laba sebelum tanggal 5.</span>
+          </div>
         </div>
       </div>
 
@@ -294,7 +451,7 @@ export default function MonthlyDistributionPage() {
                 LAPORAN DISTRIBUSI BAGI HASIL
               </h2>
               <p className="text-slate-500 text-xs mt-1 uppercase tracking-wider font-medium">
-                Periode: {getMonthLabel(selectedMonth)} {selectedYear} ({startStr} s/d {endStr})
+                Periode: {periodDisplayLabel}
               </p>
             </div>
 
