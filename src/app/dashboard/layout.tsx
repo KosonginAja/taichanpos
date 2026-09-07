@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Database, Coffee, ShoppingBag, BarChart3, LogOut, User, Menu, X, Settings, Wallet, Landmark, TrendingUp, PieChart, LineChart, Percent, ChefHat } from "lucide-react";
+import { Home, Database, Coffee, ShoppingBag, BarChart3, LogOut, User, Menu, X, Settings, Wallet, Landmark, TrendingUp, PieChart, LineChart, Percent, ChefHat, BookOpen } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -75,6 +75,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       adminOnly: true,
       items: [
         { name: "Pengaturan & Akun Staf", href: "/dashboard/settings", icon: Settings },
+      ],
+    },
+    {
+      label: "Bantuan",
+      items: [
+        { name: "Panduan Penggunaan", href: "/dashboard/guide", icon: BookOpen },
       ],
     },
   ];

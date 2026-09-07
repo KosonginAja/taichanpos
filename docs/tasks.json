@@ -761,5 +761,12 @@
     "note": "Menambahkan skema harga khusus GoFood di katalog produk dengan kalkulator markup instan (+20%, +25%, +30%), tombol kanal pesanan GoFood di kasir dengan input nomor pesanan online & nama driver, format cetak slip kantong GoFood dengan checklist [ ] item packing, pemotongan otomatis komisi platform (20%) pada pencatatan kas/bank sehingga hanya net payout riil yang masuk pembagian laba investor, serta transparansi rincian omzet bruto vs komisi vs pencairan bersih di Laporan Distribusi Bulanan & ekspor PDF.",
     "date": "2026-09-06",
     "id": "T109"
+  },
+  {
+    "task": "Implementasi Menu Baru Buku Panduan & Tata Cara Penggunaan Sistem di /dashboard/guide",
+    "status": "done",
+    "note": "Membuat menu khusus 'Panduan Penggunaan' di sidebar navigasi yang dapat diakses oleh seluruh staf (kasir, koki, dan admin). Berisi panduan alur cepat SOP operasional harian (5 langkah buka sampai tutup toko), panduan detail langkah-demi-langkah per modul (Kasir Dine-In/Takeaway/Open Bill/GoFood/Pembatalan pesanan, Layar Dapur 1-Tap KDS, Gudang & AVCO Restock, Waste Spoilage Tracking, Stock Opname & Rekonsiliasi, Dual Pricing GoFood, Buku Kas & Pembagian Hasil Investor, serta panduan cetak thermal Rongta 58mm), real-time search tutorial, filter kategori, dan FAQ kendala operasional.",
+    "date": "2026-09-07",
+    "id": "T110"
   }
 ]
